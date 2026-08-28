@@ -1,0 +1,9 @@
+backend/target/
+backend/src/main/resources/static/
+.idea/
+upload/
+logs/
+.vscode/
+application-setup.properties
+qodana.yaml
+.random_salt

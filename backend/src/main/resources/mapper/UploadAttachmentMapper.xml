@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.lingview.astra.mapper.UploadMapper">
+    <resultMap type="xyz.lingview.astra.domain.UploadAttachment" id="UploadAttachment">
+        <result property="uuid" column="uuid" />
+        <result property="attachment_id" column="attachment_id" />
+        <result property="original_filename" column="original_filename" />
+        <result property="attachment_path" column="attachment_path" />
+        <result property="status" column="status" />
+    </resultMap>
+
+    <insert id="insertUploadAttachment" parameterType="xyz.lingview.astra.domain.UploadAttachment">
+        INSERT INTO attachment(uuid, attachment_id, original_filename, attachment_path, access_key, status)
+        VALUES (#{uuid}, #{attachment_id}, #{original_filename}, #{attachment_path}, #{access_key}, 1)
+    </insert>
+
+    <select id="selectByAccessKey" resultMap="UploadAttachment">
+        SELECT * FROM attachment WHERE access_key = #{accessKey} AND status = 1
+    </select>
+
+</mapper>
