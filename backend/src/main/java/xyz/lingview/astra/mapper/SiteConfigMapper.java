@@ -14,7 +14,7 @@ public interface SiteConfigMapper {
     String getSiteName();
 
     // 查询注册用户默认角色代码
-    int getRegisterUserPermission();
+    Integer getRegisterUserPermission();
 
     // 查询版权信息
     String getCopyright();
