@@ -5,6 +5,10 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+  mvc:
+    view:
+      prefix: /WEB-INF/views/
+      suffix: .jsp
 app:
   mode: init
 logging:

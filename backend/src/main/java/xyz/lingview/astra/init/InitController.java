@@ -322,14 +322,11 @@ public class InitController {
             ymlContent.append("\n");
         }
 
-        // Thymeleaf配置
-        ymlContent.append("  thymeleaf:\n");
-        ymlContent.append("    cache: true\n");
-        ymlContent.append("    prefix: classpath:/templates/\n");
-        ymlContent.append("    suffix: .html\n");
-        ymlContent.append("    encoding: UTF-8\n");
-        ymlContent.append("    servlet:\n");
-        ymlContent.append("      content-type: text/html\n");
+        // JSP配置
+        ymlContent.append("  mvc:\n");
+        ymlContent.append("    view:\n");
+        ymlContent.append("      prefix: /WEB-INF/views/\n");
+        ymlContent.append("      suffix: .jsp\n");
         ymlContent.append("\n");
 
         // MyBatis配置

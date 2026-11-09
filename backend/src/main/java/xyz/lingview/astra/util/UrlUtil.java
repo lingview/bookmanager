@@ -23,4 +23,17 @@ public class UrlUtil {
             return domain + "/" + path;
         }
     }
+
+    public static String sanitizeInternalRedirect(String target) {
+        if (target == null || target.isEmpty()) {
+            return "/";
+        }
+        if (!target.startsWith("/") || target.startsWith("//") || target.contains("\\")) {
+            return "/";
+        }
+        if (target.indexOf('\r') >= 0 || target.indexOf('\n') >= 0) {
+            return "/";
+        }
+        return target;
+    }
 }

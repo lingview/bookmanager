@@ -1,4 +1,6 @@
 backend/target/
+backend/config/
+/config/
 backend/src/main/resources/static/
 .idea/
 upload/

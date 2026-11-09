@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import xyz.lingview.astra.annotation.RequiresPermission;
 import xyz.lingview.astra.service.CurrentUserService;
 import xyz.lingview.astra.service.UserPermissionCheckService;
+import xyz.lingview.astra.util.HandlerUtil;
 
 @Component
 public class UserPermissionInterceptor implements HandlerInterceptor {
@@ -34,7 +35,11 @@ public class UserPermissionInterceptor implements HandlerInterceptor {
             String username = currentUserService.getCurrentUsername();
 
             if (username == null) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                if (!HandlerUtil.isViewHandler(handler)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                } else {
+                    response.sendRedirect(request.getContextPath() + "/login");
+                }
                 return false;
             }
 
@@ -50,7 +55,11 @@ public class UserPermissionInterceptor implements HandlerInterceptor {
             }
 
             if (!hasPermission) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                if (!HandlerUtil.isViewHandler(handler)) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                } else {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                }
                 return false;
             }
         }

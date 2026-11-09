@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import xyz.lingview.astra.util.HandlerUtil;
 
 /**
  * @Author: lingview
@@ -32,14 +33,22 @@ public class UserAgentSessionFilter implements HandlerInterceptor {
                 log.warn("User-Agent 不匹配！可能存在会话劫持。Stored: '{}', Current: '{}'", storedUA, currentUA);
                 session.invalidate();
 
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                try {
-                    response.getWriter().write("""
-                        {"code":401,"message":"会话异常，请重新登录"}
-                        """);
-                } catch (Exception e) {
-                    log.error("返回错误响应失败", e);
+                if (!HandlerUtil.isViewHandler(handler)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    try {
+                        response.getWriter().write("""
+                            {"code":401,"message":"会话异常，请重新登录"}
+                            """);
+                    } catch (Exception e) {
+                        log.error("返回错误响应失败", e);
+                    }
+                } else {
+                    try {
+                        response.sendRedirect(request.getContextPath() + "/login");
+                    } catch (Exception e) {
+                        log.error("跳转登录页失败", e);
+                    }
                 }
                 return false;
             }

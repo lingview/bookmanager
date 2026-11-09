@@ -1,3 +1,4 @@
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -156,7 +157,7 @@
         </div>
 
         <div class="card-body">
-            <form id="initForm" action="/init/generate-config" method="post">
+            <form id="initForm" action="${pageContext.request.contextPath}/init/generate-config" method="post">
 
                 <div class="form-section">
                     <h5>服务器配置</h5>
@@ -271,7 +272,7 @@
                 </div>
 
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="hasAdvanced">
+                    <input class="form-check-input" type="checkbox" id="hasAdvanced" name="hasAdvanced">
                     <label class="form-check-label" for="hasAdvanced">
                         启用高级配置
                     </label>

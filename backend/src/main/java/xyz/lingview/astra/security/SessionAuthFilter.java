@@ -6,10 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.method.HandlerMethod;
-import xyz.lingview.astra.annotation.RequiresPermission;
 import xyz.lingview.astra.service.UserBlacklistService;
-import xyz.lingview.astra.service.UserPermissionCheckService;
 
 
 import java.io.IOException;
@@ -22,9 +19,6 @@ public class SessionAuthFilter implements Filter {
 
     @Autowired
     private UserBlacklistService userBlacklistService;
-
-    @Autowired
-    private UserPermissionCheckService userPermissionCheckService;
 
     @Autowired
     private TokenAuthResolver tokenAuthResolver;
@@ -101,10 +95,6 @@ public class SessionAuthFilter implements Filter {
                 return;
             }
 
-            if (!checkPermission(httpRequest, httpResponse, principal.getUsername())) {
-                return;
-            }
-
             chain.doFilter(request, response);
         } finally {
             UserContextHolder.clear();
@@ -134,40 +124,6 @@ public class SessionAuthFilter implements Filter {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"success\":false,\"message\":\"" + message + "\"}");
-    }
-
-    private boolean checkPermission(HttpServletRequest request, HttpServletResponse response, String username)
-            throws IOException {
-
-        Object handler = request.getAttribute("handler");
-        if (handler instanceof HandlerMethod handlerMethod) {
-
-            RequiresPermission requiresPermission = handlerMethod.getMethodAnnotation(RequiresPermission.class);
-            if (requiresPermission != null) {
-                String[] requiredPermissions = requiresPermission.value();
-                boolean allRequired = requiresPermission.all();
-
-                boolean hasPermission;
-                if (allRequired) {
-                    hasPermission = userPermissionCheckService.hasAllPermissions(username, requiredPermissions);
-                } else {
-                    hasPermission = userPermissionCheckService.hasAnyPermission(username, requiredPermissions);
-                }
-
-                if (!hasPermission) {
-                    log.warn("用户权限不足: 用户={}, 权限={}", username, Arrays.toString(requiredPermissions));
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"success\":false,\"message\":\"权限不足\"}");
-                    return false;
-                }
-
-                return true;
-            }
-        }
-
-        // 如果没有@RequiresPermission注解，则放行
-        return true;
     }
 
     private boolean isWhitelisted(String requestURI) {

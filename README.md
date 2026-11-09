@@ -68,7 +68,7 @@
 | 功能 | 说明 | 核心类 |
 |------|------|--------|
 | 首次运行检测 | 检测配置文件，自动进入初始化模式 | `StartServer` + `ConfigInfo` |
-| 安装向导 | Thymeleaf 页面引导配置 | `InitController` |
+| 安装向导 | JSP 页面引导配置 | `InitController` |
 | 自动建库 | 自动创建 MySQL 数据库 | `DatabaseCreator` |
 | 数据库迁移 | Flyway 基线+版本管理 | `FlywayConfig` |
 | 配置生成 | 自动生成 `application.yml` | `InitController.generateApplicationYml` |

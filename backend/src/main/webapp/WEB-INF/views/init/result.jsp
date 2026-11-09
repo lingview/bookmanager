@@ -1,5 +1,7 @@
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
-<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -119,30 +121,27 @@
 <div class="container">
     <div class="card">
 
-        <div class="card-header"
-             th:classappend="${success} ? 'header-success' : 'header-error'">
-            <h3 class="card-title"
-                th:text="${success} ? '配置生成成功' : '配置生成失败'">
-            </h3>
+        <div class="card-header ${success ? 'header-success' : 'header-error'}">
+            <h3 class="card-title">${success ? '配置生成成功' : '配置生成失败'}</h3>
         </div>
 
         <div class="card-body">
-            <p class="message" th:text="${message}"></p>
+            <p class="message"><c:out value="${message}"/></p>
 
-            <div th:if="${success}">
+            <c:if test="${success}">
                 <div class="alert-info">
                     <strong>提示：</strong>请重启应用以使新配置生效。
                 </div>
-                <a href="/init/setup" class="btn btn-secondary">
+                <a href="${pageContext.request.contextPath}/init/setup" class="btn btn-secondary">
                     重新配置
                 </a>
-            </div>
+            </c:if>
 
-            <div th:unless="${success}">
-                <a href="/init/setup" class="btn">
+            <c:if test="${not success}">
+                <a href="${pageContext.request.contextPath}/init/setup" class="btn">
                     返回重新配置
                 </a>
-            </div>
+            </c:if>
         </div>
 
     </div>
