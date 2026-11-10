@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.lingview.astra.mapper.BookChapterMapper">
+
+    <select id="selectChapterSummaries" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">
+        SELECT id, title, sort_order
+        FROM book_chapter
+        WHERE book_id = #{bookId} AND status = 1
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectChapter" resultType="xyz.lingview.astra.domain.BookChapter">
+        SELECT id, book_id, title, content, sort_order, status
+        FROM book_chapter
+        WHERE id = #{id} AND status = 1
+    </select>
+
+    <select id="selectMaxSortOrder" resultType="java.lang.Integer">
+        SELECT MAX(sort_order) FROM book_chapter WHERE book_id = #{bookId} AND status = 1
+    </select>
+
+    <insert id="insertChapter" parameterType="xyz.lingview.astra.domain.BookChapter" keyProperty="id">
+        INSERT INTO book_chapter (book_id, title, content, sort_order, status)
+        VALUES (#{book_id}, #{title}, #{content}, #{sort_order}, 1)
+    </insert>
+
+    <update id="updateChapter" parameterType="xyz.lingview.astra.domain.BookChapter">
+        UPDATE book_chapter
+        SET title = #{title}, content = #{content}
+        WHERE id = #{id} AND status = 1
+    </update>
+
+    <update id="softDeleteChapter">
+        UPDATE book_chapter SET status = 0 WHERE id = #{id} AND status = 1
+    </update>
+
+    <update id="updateChapterSort">
+        UPDATE book_chapter SET sort_order = #{sort_order} WHERE id = #{id}
+    </update>
+
+    <select id="countActiveChapters" resultType="int">
+        SELECT COUNT(*) FROM book_chapter WHERE book_id = #{bookId} AND status = 1
+    </select>
+
+</mapper>

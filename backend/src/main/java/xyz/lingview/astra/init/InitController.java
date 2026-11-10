@@ -212,7 +212,9 @@ public class InitController {
         try {
             org.springframework.core.io.ClassPathResource resource =
                     new org.springframework.core.io.ClassPathResource("init.sql");
-            org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection, resource);
+            org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
+                    connection,
+                    new org.springframework.core.io.support.EncodedResource(resource, StandardCharsets.UTF_8));
 
             updateAdminUser(connection, newAdminUsername, newAdminPassword);
         } catch (Exception e) {

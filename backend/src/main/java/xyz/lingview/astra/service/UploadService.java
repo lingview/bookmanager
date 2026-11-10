@@ -19,5 +19,6 @@ public interface UploadService {
     ApiResponse<Map<String, String>> completeUpload(HttpServletRequest request, Map<String, String> payload);
     ApiResponse<Map<String, String>> uploadAvatar(HttpServletRequest request, MultipartFile file);
     ApiResponse<Map<String, String>> adminUploadAvatar(HttpServletRequest request, MultipartFile file);
+    ApiResponse<Map<String, String>> uploadBookCover(HttpServletRequest request, MultipartFile file);
     ApiResponse<Map<String, String>> downloadAndUploadExternalResource(HttpServletRequest request, String url);
 }

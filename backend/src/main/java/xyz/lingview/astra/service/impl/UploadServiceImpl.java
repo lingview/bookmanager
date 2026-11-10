@@ -769,6 +769,86 @@ public class UploadServiceImpl implements UploadService {
     }
 
     @Override
+    public ApiResponse<Map<String, String>> uploadBookCover(HttpServletRequest request, MultipartFile file) {
+        log.info("开始图书封面上传流程");
+
+        if (file == null || file.isEmpty()) {
+            return ApiResponse.error(400, "文件为空");
+        }
+
+        long maxCoverSize = 5L * 1024 * 1024;
+        if (file.getSize() > maxCoverSize) {
+            return ApiResponse.error(400, "封面文件过大，最大支持5MB");
+        }
+
+        String username = getUsername(request);
+        if (username == null) {
+            return ApiResponse.error(401, "用户未登录或用户名无效");
+        }
+
+        String userUUID = getUserUUID(username);
+        if (userUUID == null) {
+            return ApiResponse.error(404, "未找到用户");
+        }
+
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        }
+
+        List<String> allowedImageTypes = SUPPORTED_FILE_TYPES.get("image");
+        List<String> coverExtensions = List.of(".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp");
+        if (contentType == null || allowedImageTypes == null
+                || !allowedImageTypes.contains(contentType) || !coverExtensions.contains(extension)) {
+            log.warn("尝试上传非法封面。MIME: {}, 扩展名: {}", contentType, extension);
+            return ApiResponse.error(400, "封面必须是图片格式（jpg/jpeg/png/gif/webp/bmp）");
+        }
+
+        Path uploadPath = buildFileSystemPath(username, "cover");
+        Path allowedRoot = getBasePath();
+        if (!uploadPath.startsWith(allowedRoot)) {
+            log.error("检测到无效的封面上传路径: {}", uploadPath);
+            return ApiResponse.error(403, "上传路径无效");
+        }
+
+        try {
+            Files.createDirectories(uploadPath);
+        } catch (IOException e) {
+            log.error("创建封面目录失败: {}", uploadPath, e);
+            return ApiResponse.error(500, "创建目录失败");
+        }
+
+        String fileUUID = RandomUtil.generateUUID();
+        String fileName = fileUUID + extension;
+        String accessKey = UUID.randomUUID().toString().replace("-", "");
+        Path filePath = uploadPath.resolve(fileName);
+
+        UploadAttachment uploadFile = new UploadAttachment();
+        uploadFile.setUuid(userUUID);
+        uploadFile.setAttachment_id(fileUUID);
+        uploadFile.setOriginal_filename(originalFilename);
+        uploadFile.setAttachment_path(buildDatabasePath(username, "cover", fileName));
+        uploadFile.setAccess_key(accessKey);
+        if (uploadMapper.insertUploadAttachment(uploadFile) != 1) {
+            log.error("插入封面记录到数据库失败。文件: {}", fileName);
+            return ApiResponse.error(500, "插入数据库失败");
+        }
+
+        try {
+            file.transferTo(filePath);
+        } catch (IOException e) {
+            log.error("保存封面文件失败: {}", filePath, e);
+            return ApiResponse.error(500, "保存封面文件失败");
+        }
+
+        String fileUrl = "/file/" + accessKey;
+        log.info("封面上传完成。URL: {}", fileUrl);
+        return ApiResponse.success(Map.of("fileUrl", fileUrl));
+    }
+
+    @Override
     public ApiResponse<Map<String, String>> downloadAndUploadExternalResource(HttpServletRequest request, String url) {
         try {
             log.info("开始下载并上传外部资源: {}", url);

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import xyz.lingview.astra.interceptor.CsrfInterceptor;
 import xyz.lingview.astra.interceptor.PageAuthInterceptor;
 import xyz.lingview.astra.interceptor.SessionCookieInterceptor;
 import xyz.lingview.astra.interceptor.UserAgentSessionFilter;
@@ -46,6 +47,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private SessionCookieInterceptor sessionCookieInterceptor;
 
+    @Autowired
+    private CsrfInterceptor csrfInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(sessionCookieInterceptor)
@@ -56,6 +60,10 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/api/login", "/api/logout", "/login", "/logout", "/error");
 
         registry.addInterceptor(pageAuthInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/api/**", "/login", "/logout", "/error", "/file/**");
+
+        registry.addInterceptor(csrfInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/api/**", "/login", "/logout", "/error");
 

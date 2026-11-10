@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import xyz.lingview.astra.security.AuthType;
 import xyz.lingview.astra.security.AuthenticatedUser;
@@ -21,7 +22,7 @@ public class PageAuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
-        if (!HandlerUtil.isViewHandler(handler)) {
+        if (!(handler instanceof HandlerMethod)) {
             return true;
         }
 
@@ -32,6 +33,11 @@ public class PageAuthInterceptor implements HandlerInterceptor {
                 UserContextHolder.set(new AuthenticatedUser((String) username, null, AuthType.SESSION));
                 return true;
             }
+        }
+
+        if (!HandlerUtil.isViewHandler(handler)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
         }
 
         String target = request.getRequestURI();

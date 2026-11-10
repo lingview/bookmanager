@@ -36,6 +36,22 @@
             font-weight: 600;
         }
 
+        .bar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .entry {
+            font-size: 14px;
+            color: #409eff;
+            text-decoration: none;
+        }
+
+        .entry:hover {
+            text-decoration: underline;
+        }
+
         .user {
             font-size: 14px;
             color: #606266;
@@ -66,7 +82,10 @@
 
 <body>
 <div class="bar">
-    <span class="title">Astra Framework</span>
+    <div class="bar-left">
+        <span class="title">Astra Framework</span>
+        <a class="entry" href="${pageContext.request.contextPath}/books">图书管理</a>
+    </div>
     <span class="user">当前用户：<c:out value="${username}"/></span>
     <form action="${pageContext.request.contextPath}/logout" method="post">
         <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
@@ -76,6 +95,7 @@
 
 <div class="content">
     <p>JSP 模板引擎已就绪，页面受会话认证与权限拦截器保护。</p>
+    <p>前往 <a class="entry" href="${pageContext.request.contextPath}/books">图书管理</a> 浏览图书列表与阅读器。</p>
 </div>
 </body>
 </html>

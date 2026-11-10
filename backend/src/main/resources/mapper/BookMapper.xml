@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.lingview.astra.mapper.BookMapper">
+
+    <sql id="bookColumns">
+        b.id, b.title, b.author, b.category_id,
+        c.name AS category_name,
+        b.cover_url, b.description,
+        DATE_FORMAT(b.update_time, '%Y-%m-%d %H:%i') AS update_time,
+        (SELECT COUNT(*) FROM book_chapter ch WHERE ch.book_id = b.id AND ch.status = 1) AS chapter_count,
+        p.chapter_id AS progress_chapter_id,
+        pc.title AS progress_chapter_title,
+        p.scroll_percent AS progress_scroll_percent
+    </sql>
+
+    <sql id="bookFilters">
+        <where>
+            b.status = 1
+            <if test="keyword != null and keyword != ''">
+                AND (b.title LIKE CONCAT('%', #{keyword}, '%') OR b.author LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="categoryId != null">
+                AND b.category_id = #{categoryId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="countBooks" resultType="int">
+        SELECT COUNT(*)
+        FROM book b
+        <include refid="bookFilters"/>
+    </select>
+
+    <select id="selectBooks" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
+        SELECT
+        <include refid="bookColumns"/>
+        FROM book b
+        LEFT JOIN book_category c ON b.category_id = c.id
+        LEFT JOIN book_reading_progress p ON p.book_id = b.id AND p.user_uuid = #{userUuid}
+        LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
+        <include refid="bookFilters"/>
+        ORDER BY b.update_time DESC, b.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectBook" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
+        SELECT
+        <include refid="bookColumns"/>
+        FROM book b
+        LEFT JOIN book_category c ON b.category_id = c.id
+        LEFT JOIN book_reading_progress p ON p.book_id = b.id AND p.user_uuid = #{userUuid}
+        LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
+        WHERE b.id = #{id} AND b.status = 1
+    </select>
+
+    <insert id="insertBook" parameterType="xyz.lingview.astra.domain.Book" keyProperty="id">
+        INSERT INTO book (title, author, category_id, cover_url, description, status)
+        VALUES (#{title}, #{author}, #{category_id}, #{cover_url}, #{description}, 1)
+    </insert>
+
+    <update id="updateBook" parameterType="xyz.lingview.astra.domain.Book">
+        UPDATE book
+        SET title = #{title},
+            author = #{author},
+            category_id = #{category_id},
+            cover_url = #{cover_url},
+            description = #{description}
+        WHERE id = #{id} AND status = 1
+    </update>
+
+    <update id="softDeleteBook">
+        UPDATE book SET status = 0 WHERE id = #{id} AND status = 1
+    </update>
+
+    <select id="selectCategories" resultType="xyz.lingview.astra.domain.BookCategory">
+        SELECT id, name, sort_order, status
+        FROM book_category
+        WHERE status = 1
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="countCategoryByName" resultType="int">
+        SELECT COUNT(*) FROM book_category WHERE name = #{name}
+    </select>
+
+    <select id="countBooksByCategory" resultType="int">
+        SELECT COUNT(*) FROM book WHERE category_id = #{categoryId} AND status = 1
+    </select>
+
+    <insert id="insertCategory" parameterType="xyz.lingview.astra.domain.BookCategory" keyProperty="id">
+        INSERT INTO book_category (name, sort_order, status)
+        VALUES (#{name}, #{sort_order}, 1)
+    </insert>
+
+    <delete id="deleteCategory">
+        DELETE FROM book_category WHERE id = #{id}
+    </delete>
+
+    <select id="selectProgress" resultType="xyz.lingview.astra.domain.BookReadingProgress">
+        SELECT user_uuid, book_id, chapter_id, scroll_percent
+        FROM book_reading_progress
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </select>
+
+    <insert id="insertProgress" parameterType="xyz.lingview.astra.domain.BookReadingProgress">
+        INSERT INTO book_reading_progress (user_uuid, book_id, chapter_id, scroll_percent)
+        VALUES (#{user_uuid}, #{book_id}, #{chapter_id}, #{scroll_percent})
+    </insert>
+
+    <update id="updateProgressChapter">
+        UPDATE book_reading_progress
+        SET chapter_id = #{chapterId}, scroll_percent = 0
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </update>
+
+    <update id="updateProgressScroll">
+        UPDATE book_reading_progress
+        SET chapter_id = #{chapterId}, scroll_percent = #{scrollPercent}
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </update>
+
+</mapper>
