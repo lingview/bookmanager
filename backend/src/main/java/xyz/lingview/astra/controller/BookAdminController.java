@@ -28,12 +28,15 @@ import xyz.lingview.astra.dto.request.BookChapterFormDTO;
 import xyz.lingview.astra.dto.request.BookFormDTO;
 import xyz.lingview.astra.dto.request.ChapterOrderDTO;
 import xyz.lingview.astra.dto.response.BookViewDTO;
+import xyz.lingview.astra.dto.response.CoverCandidateDTO;
 import xyz.lingview.astra.security.CsrfTokenService;
 import xyz.lingview.astra.service.BookChapterService;
 import xyz.lingview.astra.service.BookService;
+import xyz.lingview.astra.service.CoverSearchService;
 import xyz.lingview.astra.service.UploadService;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -51,6 +54,9 @@ public class BookAdminController {
 
     @Autowired
     private UploadService uploadService;
+
+    @Autowired
+    private CoverSearchService coverSearchService;
 
     @Autowired
     private CsrfTokenService csrfTokenService;
@@ -250,6 +256,23 @@ public class BookAdminController {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
         return "redirect:/books/" + id + "/chapters";
+    }
+
+    // 搜索封面候选图
+    @GetMapping("/cover-search")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<List<CoverCandidateDTO>> coverSearch(@RequestParam String keyword,
+                                                            @RequestParam(defaultValue = "12") int limit) {
+        return ApiResponse.success(coverSearchService.search(keyword, limit));
+    }
+
+    // 下载选中的封面图并入附件库
+    @PostMapping("/cover-download")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<Map<String, String>> coverDownload(@RequestParam String url, HttpServletRequest request) {
+        return uploadService.storeImageFromUrl(request, url);
     }
 
     // 分类管理页

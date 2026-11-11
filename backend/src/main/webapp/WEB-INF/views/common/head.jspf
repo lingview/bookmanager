@@ -245,6 +245,79 @@
         .form-actions { display: flex; gap: 10px; margin-top: 24px; }
         .cover-preview { width: 96px; height: 128px; object-fit: cover; border-radius: 6px; border: 1px solid #ebeef5; }
 
+        .cover-search { display: flex; gap: 10px; align-items: center; }
+        .cover-search .input { flex: 1; min-width: 0; }
+
+        .picker-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(0, 0, 0, .45);
+        }
+
+        .picker-mask[hidden] { display: none; }
+
+        .picker {
+            display: flex;
+            flex-direction: column;
+            width: min(860px, 100%);
+            max-height: 82vh;
+            overflow: hidden;
+            background: #fff;
+            border-radius: 10px;
+        }
+
+        .picker-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid #ebeef5;
+            font-weight: 600;
+        }
+
+        .picker-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            padding: 16px 20px;
+            overflow: auto;
+        }
+
+        .picker-body img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            background: #f5f7fa;
+            border: 1px solid #ebeef5;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .picker-body img:hover {
+            border-color: #409eff;
+            box-shadow: 0 0 0 2px rgba(64, 158, 255, .2);
+        }
+
+        .picker-empty {
+            grid-column: 1 / -1;
+            padding: 30px 0;
+            text-align: center;
+            color: #909399;
+        }
+
+        .picker-foot {
+            padding: 10px 20px;
+            border-top: 1px solid #ebeef5;
+            color: #909399;
+            font-size: 12px;
+        }
+
         table.table {
             width: 100%;
             border-collapse: collapse;

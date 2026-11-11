@@ -57,14 +57,21 @@
 
         <div class="form-row">
             <label class="form-label" for="cover">封面</label>
-            <c:if test="${not empty coverUrl}">
-                <div style="margin-bottom: 10px;">
-                    <img class="cover-preview" src="<c:out value='${coverUrl}'/>" alt="当前封面">
-                </div>
-            </c:if>
+
+            <div id="coverPreviewWrap" style="margin-bottom: 10px; display: ${empty coverUrl ? 'none' : 'block'};">
+                <img class="cover-preview" id="coverPreview" src="<c:out value='${coverUrl}'/>" alt="封面预览">
+            </div>
+
+            <div class="cover-search">
+                <input class="input" type="text" id="coverKeyword" maxlength="60"
+                       placeholder="输入书名或关键词搜索封面"
+                       value="<c:out value='${bookForm.title}'/>">
+                <button type="button" class="btn ghost" id="coverSearchBtn">搜图</button>
+            </div>
+
             <input class="input" type="file" id="cover" name="cover"
-                   accept=".jpg,.jpeg,.png,.gif,.webp,.bmp">
-            <p class="form-hint">支持 jpg/png/gif/webp/bmp，最大 5MB；不选择则保留现有封面</p>
+                   accept=".jpg,.jpeg,.png,.gif,.webp,.bmp" style="margin-top: 10px;">
+            <p class="form-hint">支持 jpg/png/gif/webp/bmp，最大 5MB；也可上传本地图片，不选择则保留现有封面</p>
         </div>
 
         <div class="form-actions">
@@ -75,3 +82,119 @@
 </div>
 
 <%@ include file="../common/foot.jspf" %>
+
+<div class="picker-mask" id="coverPicker" hidden>
+    <div class="picker">
+        <div class="picker-head">
+            <span>选择封面</span>
+            <button type="button" class="link-btn" id="coverPickerClose">关闭</button>
+        </div>
+        <div class="picker-body" id="coverPickerBody"></div>
+        <p class="picker-foot">图片来自网络搜索，请确认已获得使用授权后再采用</p>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var btn = document.getElementById('coverSearchBtn');
+        if (!btn) return;
+
+        var keywordInput = document.getElementById('coverKeyword');
+        var mask = document.getElementById('coverPicker');
+        var body = document.getElementById('coverPickerBody');
+        var closeBtn = document.getElementById('coverPickerClose');
+        var previewWrap = document.getElementById('coverPreviewWrap');
+        var preview = document.getElementById('coverPreview');
+        var coverUrlField = document.querySelector('input[name="cover_url"]');
+        var csrfToken = document.querySelector('input[name="csrfToken"]').value;
+        var ctx = '${ctx}';
+
+        function closePicker() {
+            mask.hidden = true;
+        }
+
+        function openPicker() {
+            mask.hidden = false;
+        }
+
+        function setCover(url) {
+            coverUrlField.value = url;
+            preview.src = url;
+            previewWrap.style.display = 'block';
+        }
+
+        closeBtn.addEventListener('click', closePicker);
+        mask.addEventListener('click', function (e) {
+            if (e.target === mask) closePicker();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !mask.hidden) closePicker();
+        });
+
+        btn.addEventListener('click', function () {
+            var keyword = (keywordInput.value || '').trim();
+            if (!keyword) {
+                alert('请输入书名或关键词');
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = '搜索中...';
+            body.innerHTML = '<p class="picker-empty">正在搜索...</p>';
+            openPicker();
+
+            fetch(ctx + '/books/cover-search?keyword=' + encodeURIComponent(keyword) + '&limit=12',
+                { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    var items = (res && res.data) || [];
+                    body.innerHTML = '';
+                    if (!items.length) {
+                        body.innerHTML = '<p class="picker-empty">没有搜到图片，换个关键词试试</p>';
+                        return;
+                    }
+                    items.forEach(function (item) {
+                        var img = document.createElement('img');
+                        img.src = item.thumb_url || item.image_url;
+                        img.loading = 'lazy';
+                        img.alt = '';
+                        img.title = '点击使用这张图';
+                        img.addEventListener('click', function () {
+                            pick(item.image_url, img);
+                        });
+                        body.appendChild(img);
+                    });
+                })
+                .catch(function () {
+                    body.innerHTML = '<p class="picker-empty">搜索失败，请稍后重试</p>';
+                })
+                .then(function () {
+                    btn.disabled = false;
+                    btn.textContent = '搜图';
+                });
+        });
+
+        function pick(url, img) {
+            var params = new URLSearchParams();
+            params.append('url', url);
+            img.style.opacity = '.4';
+
+            fetch(ctx + '/books/cover-download', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-Token': csrfToken },
+                body: params
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (res.code !== 200 || !res.data) {
+                    alert(res.message || '下载失败');
+                    img.style.opacity = '';
+                    return;
+                }
+                setCover(res.data.fileUrl);
+                closePicker();
+            }).catch(function () {
+                alert('下载失败');
+                img.style.opacity = '';
+            });
+        }
+    })();
+</script>

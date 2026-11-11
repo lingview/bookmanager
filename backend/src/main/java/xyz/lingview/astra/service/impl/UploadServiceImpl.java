@@ -17,7 +17,9 @@ import xyz.lingview.astra.service.UploadService;
 import xyz.lingview.astra.util.RandomUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URI;
@@ -846,6 +848,171 @@ public class UploadServiceImpl implements UploadService {
         String fileUrl = "/file/" + accessKey;
         log.info("封面上传完成。URL: {}", fileUrl);
         return ApiResponse.success(Map.of("fileUrl", fileUrl));
+    }
+
+    @Override
+    public ApiResponse<Map<String, String>> storeImageFromUrl(HttpServletRequest request, String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return ApiResponse.error(400, "图片地址不能为空");
+        }
+        String target = url.trim();
+        if (!target.startsWith("http://") && !target.startsWith("https://")) {
+            return ApiResponse.error(400, "只支持HTTP/HTTPS协议");
+        }
+
+        String username = getUsername(request);
+        if (username == null) {
+            return ApiResponse.error(401, "用户未登录或用户名无效");
+        }
+        String userUUID = getUserUUID(username);
+        if (userUUID == null) {
+            return ApiResponse.error(404, "未找到用户");
+        }
+
+        long maxSize = 8L * 1024 * 1024;
+        HttpURLConnection connection = null;
+        try {
+            URI uri = new URI(target);
+            int redirectCount = 0;
+            while (true) {
+                if (!isPublicHost(uri.getHost())) {
+                    log.warn("封面下载目标不是公网地址: {}", uri.getHost());
+                    return ApiResponse.error(403, "禁止访问内网地址");
+                }
+                connection = (HttpURLConnection) uri.toURL().openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(8000);
+                connection.setReadTimeout(15000);
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+                connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+                connection.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+                connection.setInstanceFollowRedirects(false);
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode >= 300 && responseCode < 400) {
+                    String location = connection.getHeaderField("Location");
+                    connection.disconnect();
+                    connection = null;
+                    if (location == null || location.isBlank() || redirectCount++ >= 3) {
+                        return ApiResponse.error(502, "图片地址重定向异常");
+                    }
+                    uri = uri.resolve(location);
+                    continue;
+                }
+                if (responseCode != 200) {
+                    return ApiResponse.error(502, "下载图片失败，状态码 " + responseCode);
+                }
+                break;
+            }
+
+            String extension = imageExtension(connection.getContentType());
+            if (extension == null) {
+                return ApiResponse.error(400, "该地址不是可用的图片格式（支持 jpg/png/gif/webp/bmp）");
+            }
+            long declaredLength = connection.getContentLengthLong();
+            if (declaredLength > maxSize) {
+                return ApiResponse.error(400, "图片过大，最大支持8MB");
+            }
+
+            byte[] data;
+            try (InputStream in = connection.getInputStream()) {
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                byte[] chunk = new byte[8192];
+                long total = 0;
+                int read;
+                while ((read = in.read(chunk)) != -1) {
+                    total += read;
+                    if (total > maxSize) {
+                        return ApiResponse.error(400, "图片过大，最大支持8MB");
+                    }
+                    buffer.write(chunk, 0, read);
+                }
+                data = buffer.toByteArray();
+            }
+            if (data.length == 0) {
+                return ApiResponse.error(400, "图片内容为空");
+            }
+
+            Path uploadPath = buildFileSystemPath(username, "cover");
+            if (!uploadPath.startsWith(getBasePath())) {
+                return ApiResponse.error(403, "上传路径无效");
+            }
+            Files.createDirectories(uploadPath);
+
+            String fileUUID = RandomUtil.generateUUID();
+            String fileName = fileUUID + extension;
+            String accessKey = UUID.randomUUID().toString().replace("-", "");
+            Files.write(uploadPath.resolve(fileName), data);
+
+            UploadAttachment uploadFile = new UploadAttachment();
+            uploadFile.setUuid(userUUID);
+            uploadFile.setAttachment_id(fileUUID);
+            uploadFile.setOriginal_filename(remoteFileName(uri, extension));
+            uploadFile.setAttachment_path(buildDatabasePath(username, "cover", fileName));
+            uploadFile.setAccess_key(accessKey);
+            if (uploadMapper.insertUploadAttachment(uploadFile) != 1) {
+                Files.deleteIfExists(uploadPath.resolve(fileName));
+                return ApiResponse.error(500, "插入数据库失败");
+            }
+
+            String fileUrl = "/file/" + accessKey;
+            log.info("封面下载完成。来源: {}，URL: {}", uri, fileUrl);
+            return ApiResponse.success(Map.of("fileUrl", fileUrl));
+        } catch (Exception e) {
+            log.warn("下载封面失败: {}", target, e);
+            return ApiResponse.error(500, "下载封面失败");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private boolean isPublicHost(String host) {
+        if (host == null || host.isBlank()) {
+            return false;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(host);
+            return !(address.isLoopbackAddress() || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress() || address.isAnyLocalAddress()
+                    || address.isMulticastAddress());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String imageExtension(String contentType) {
+        if (contentType == null) {
+            return null;
+        }
+        String type = contentType.toLowerCase();
+        if (type.startsWith("image/jpeg") || type.startsWith("image/jpg")) {
+            return ".jpg";
+        }
+        if (type.startsWith("image/png")) {
+            return ".png";
+        }
+        if (type.startsWith("image/gif")) {
+            return ".gif";
+        }
+        if (type.startsWith("image/webp")) {
+            return ".webp";
+        }
+        if (type.startsWith("image/bmp")) {
+            return ".bmp";
+        }
+        return null;
+    }
+
+    private String remoteFileName(URI uri, String extension) {
+        String path = uri.getPath();
+        String name = path == null ? "" : path.substring(path.lastIndexOf('/') + 1);
+        if (name.isBlank()) {
+            name = "remote-image" + extension;
+        }
+        return name.length() > 200 ? name.substring(0, 200) : name;
     }
 
     @Override

@@ -56,8 +56,8 @@ public class FileAccessServiceImpl implements FileAccessService {
             }
 
             String contentType = Files.probeContentType(filePath);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
+            if (contentType == null || "application/octet-stream".equalsIgnoreCase(contentType)) {
+                contentType = guessContentType(filePath.getFileName().toString(), contentType);
             }
 
             boolean isImage = contentType.startsWith("image/");
@@ -106,8 +106,33 @@ public class FileAccessServiceImpl implements FileAccessService {
         }
     }
 
-    private String encodeFilename(String filename) {
-        try {
+    private String guessContentType(String fileName, String fallback) {
+        int dot = fileName.lastIndexOf('.');
+        String extension = dot >= 0 ? fileName.substring(dot + 1).toLowerCase() : "";
+        return switch (extension) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "webp" -> "image/webp";
+            case "bmp" -> "image/bmp";
+            case "svg" -> "image/svg+xml";
+            case "mp3" -> "audio/mpeg";
+            case "m4a" -> "audio/mp4";
+            case "aac" -> "audio/aac";
+            case "wav" -> "audio/wav";
+            case "ogg" -> "audio/ogg";
+            case "flac" -> "audio/flac";
+            case "mp4" -> "video/mp4";
+            case "webm" -> "video/webm";
+            case "pdf" -> "application/pdf";
+            case "txt" -> "text/plain";
+            case "json" -> "application/json";
+            case "zip" -> "application/zip";
+            default -> fallback != null ? fallback : "application/octet-stream";
+        };
+    }
+
+    private String encodeFilename(String filename) {        try {
             return URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
         } catch (UnsupportedEncodingException e) {
             log.error("编码文件名失败: {}", filename, e);
