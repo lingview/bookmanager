@@ -462,6 +462,7 @@
     <div class="nav-group">
         <a class="brand" href="${ctx}/">Astra</a>
         <a class="nav-link ${navActive == 'books' ? 'active' : ''}" href="${ctx}/books">图书</a>
+        <a class="nav-link ${navActive == 'stats' ? 'active' : ''}" href="${ctx}/books/stats">统计</a>
         <c:if test="${canManage}">
             <a class="nav-link ${navActive == 'categories' ? 'active' : ''}" href="${ctx}/books/categories">分类</a>
         </c:if>

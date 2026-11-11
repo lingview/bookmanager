@@ -37,7 +37,7 @@
     </select>
 
     <select id="selectChapter" resultType="xyz.lingview.astra.domain.BookChapter">
-        SELECT id, book_id, title, content, sort_order, status
+        SELECT id, book_id, title, content, word_count, sort_order, status
         FROM book_chapter
         WHERE id = #{id} AND status = 1
     </select>
@@ -47,13 +47,13 @@
     </select>
 
     <insert id="insertChapter" parameterType="xyz.lingview.astra.domain.BookChapter" keyProperty="id">
-        INSERT INTO book_chapter (book_id, title, content, sort_order, status)
-        VALUES (#{book_id}, #{title}, #{content}, #{sort_order}, 1)
+        INSERT INTO book_chapter (book_id, title, content, word_count, sort_order, status)
+        VALUES (#{book_id}, #{title}, #{content}, #{word_count}, #{sort_order}, 1)
     </insert>
 
     <update id="updateChapter" parameterType="xyz.lingview.astra.domain.BookChapter">
         UPDATE book_chapter
-        SET title = #{title}, content = #{content}
+        SET title = #{title}, content = #{content}, word_count = #{word_count}
         WHERE id = #{id} AND status = 1
     </update>
 

@@ -83,6 +83,7 @@ public class BookChapterServiceImpl implements BookChapterService {
         chapter.setBook_id(bookId);
         chapter.setTitle(dto.getTitle().trim());
         chapter.setContent(dto.getContent());
+        chapter.setWord_count(wordCount(dto.getContent()));
         chapter.setSort_order(nextSortOrder(bookId));
         chapterMapper.insertChapter(chapter);
     }
@@ -94,6 +95,7 @@ public class BookChapterServiceImpl implements BookChapterService {
         chapter.setId(chapterId);
         chapter.setTitle(dto.getTitle().trim());
         chapter.setContent(dto.getContent());
+        chapter.setWord_count(wordCount(dto.getContent()));
         chapterMapper.updateChapter(chapter);
     }
 
@@ -185,6 +187,7 @@ public class BookChapterServiceImpl implements BookChapterService {
             chapter.setBook_id(bookId);
             chapter.setTitle(titles.get(i));
             chapter.setContent(body);
+            chapter.setWord_count(wordCount(body));
             chapter.setSort_order(sort);
             chapterMapper.insertChapter(chapter);
             imported++;
@@ -278,6 +281,19 @@ public class BookChapterServiceImpl implements BookChapterService {
         }
         String trimmed = name.trim();
         return trimmed.isEmpty() ? FALLBACK_TITLE : trimmed;
+    }
+
+    private int wordCount(String content) {
+        if (content == null) {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; i < content.length(); i++) {
+            if (!Character.isWhitespace(content.charAt(i))) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private int nextSortOrder(Integer bookId) {

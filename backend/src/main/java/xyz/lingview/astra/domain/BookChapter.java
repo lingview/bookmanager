@@ -8,6 +8,7 @@ public class BookChapter {
     private Integer book_id;
     private String title;
     private String content;
+    private Integer word_count;
     private Integer sort_order;
     private Integer status;
 }

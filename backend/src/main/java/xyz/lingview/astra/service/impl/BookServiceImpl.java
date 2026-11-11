@@ -13,6 +13,7 @@ import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.BookViewDTO;
 import xyz.lingview.astra.mapper.BookMapper;
 import xyz.lingview.astra.service.BookService;
+import xyz.lingview.astra.service.BookStatsService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,6 +28,9 @@ public class BookServiceImpl implements BookService {
 
     @Autowired
     private BookMapper bookMapper;
+
+    @Autowired
+    private BookStatsService bookStatsService;
 
     @Override
     public PageResult<BookViewDTO> listBooks(String keyword, Integer categoryId, int pageNum, int pageSize,
@@ -123,10 +127,12 @@ public class BookServiceImpl implements BookService {
         BookReadingProgress progress = bookMapper.selectProgress(userUuid, bookId);
         if (progress == null) {
             insertProgress(bookId, chapterId, BigDecimal.ZERO, userUuid);
+            bookStatsService.recordChapterOpen(bookId, chapterId, userUuid);
             return BigDecimal.ZERO;
         }
         if (!chapterId.equals(progress.getChapter_id())) {
             bookMapper.updateProgressChapter(userUuid, bookId, chapterId);
+            bookStatsService.recordChapterOpen(bookId, chapterId, userUuid);
             return BigDecimal.ZERO;
         }
         return progress.getScroll_percent() == null ? BigDecimal.ZERO : progress.getScroll_percent();

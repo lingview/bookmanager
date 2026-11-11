@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.lingview.astra.mapper.BookStatsMapper">
+
+    <select id="selectTotals" resultType="xyz.lingview.astra.dto.response.BookStatsDTO">
+        SELECT
+            (SELECT COUNT(*) FROM book) AS book_total,
+            (SELECT COUNT(*) FROM book WHERE status = 1) AS book_active,
+            (SELECT COUNT(*) FROM book WHERE status = 0) AS book_deleted,
+            (SELECT COUNT(*) FROM book_category WHERE status = 1) AS category_total,
+            (SELECT COUNT(*) FROM book_chapter ch
+             JOIN book b ON b.id = ch.book_id AND b.status = 1
+             WHERE ch.status = 1) AS chapter_total,
+            (SELECT COALESCE(SUM(ch.word_count), 0) FROM book_chapter ch
+             JOIN book b ON b.id = ch.book_id AND b.status = 1
+             WHERE ch.status = 1) AS word_total,
+            (SELECT COALESCE(ROUND(AVG(ch.word_count)), 0) FROM book_chapter ch
+             JOIN book b ON b.id = ch.book_id AND b.status = 1
+             WHERE ch.status = 1) AS avg_chapter_words,
+            (SELECT COALESCE(SUM(t.seconds), 0) FROM book_reading_time t
+             JOIN book b ON b.id = t.book_id AND b.status = 1) AS reading_seconds_total,
+            (SELECT COUNT(DISTINCT t.user_uuid) FROM book_reading_time t
+             JOIN book b ON b.id = t.book_id AND b.status = 1) AS reader_count,
+            (SELECT COUNT(DISTINCT t.book_id) FROM book_reading_time t
+             JOIN book b ON b.id = t.book_id AND b.status = 1) AS book_read_count
+    </select>
+
+    <select id="selectCategoryStats" resultType="xyz.lingview.astra.dto.response.CategoryStatDTO">
+        SELECT c.name AS name,
+               COUNT(DISTINCT b.id) AS book_count,
+               COUNT(ch.id) AS chapter_count,
+               COALESCE(SUM(ch.word_count), 0) AS word_count
+        FROM book_category c
+        LEFT JOIN book b ON b.category_id = c.id AND b.status = 1
+        LEFT JOIN book_chapter ch ON ch.book_id = b.id AND ch.status = 1
+        WHERE c.status = 1
+        GROUP BY c.id, c.name
+        ORDER BY word_count DESC, c.sort_order
+    </select>
+
+    <select id="selectTopBooks" resultType="xyz.lingview.astra.dto.response.BookWordStatDTO">
+        SELECT b.title AS title,
+               COUNT(ch.id) AS chapter_count,
+               COALESCE(SUM(ch.word_count), 0) AS word_count
+        FROM book b
+        LEFT JOIN book_chapter ch ON ch.book_id = b.id AND ch.status = 1
+        WHERE b.status = 1
+        GROUP BY b.id, b.title
+        ORDER BY word_count DESC, b.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectChapterBuckets" resultType="xyz.lingview.astra.dto.response.BucketStatDTO">
+        SELECT '1千字以下' AS label, COUNT(*) AS item_count
+        FROM book_chapter WHERE status = 1 AND word_count &lt; 1000
+            AND book_id IN (SELECT id FROM book WHERE status = 1)
+        UNION ALL
+        SELECT '1千-5千字', COUNT(*)
+        FROM book_chapter WHERE status = 1 AND word_count >= 1000 AND word_count &lt; 5000
+            AND book_id IN (SELECT id FROM book WHERE status = 1)
+        UNION ALL
+        SELECT '5千-2万字', COUNT(*)
+        FROM book_chapter WHERE status = 1 AND word_count >= 5000 AND word_count &lt; 20000
+            AND book_id IN (SELECT id FROM book WHERE status = 1)
+        UNION ALL
+        SELECT '2万字以上', COUNT(*)
+        FROM book_chapter WHERE status = 1 AND word_count >= 20000
+            AND book_id IN (SELECT id FROM book WHERE status = 1)
+    </select>
+
+    <select id="selectDailyReading" resultType="xyz.lingview.astra.dto.response.DailyReadingDTO">
+        SELECT t.stat_date AS stat_date, SUM(t.seconds) AS seconds
+        FROM book_reading_time t
+        JOIN book b ON b.id = t.book_id AND b.status = 1
+        WHERE t.stat_date >= #{fromDate}
+        GROUP BY t.stat_date
+        ORDER BY t.stat_date
+    </select>
+
+    <select id="selectAvgCompleteRate" resultType="java.lang.Double">
+        SELECT AVG(ratio)
+        FROM (
+            SELECT e.user_uuid,
+                   e.book_id,
+                   COUNT(DISTINCT e.chapter_id) * 1.0 /
+                   NULLIF((SELECT COUNT(*) FROM book_chapter c
+                           WHERE c.book_id = e.book_id AND c.status = 1), 0) AS ratio
+            FROM book_reading_event e
+            JOIN book b ON b.id = e.book_id AND b.status = 1
+            GROUP BY e.user_uuid, e.book_id
+        ) t
+    </select>
+
+    <update id="addReadingSeconds">
+        UPDATE book_reading_time
+        SET seconds = seconds + #{seconds},
+            update_time = #{now}
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId} AND stat_date = #{statDate}
+    </update>
+
+    <insert id="insertReadingRow">
+        INSERT INTO book_reading_time (user_uuid, book_id, stat_date, seconds, update_time)
+        VALUES (#{userUuid}, #{bookId}, #{statDate}, #{seconds}, #{now})
+    </insert>
+
+    <insert id="insertChapterEvent">
+        INSERT INTO book_reading_event (user_uuid, book_id, chapter_id, event_time)
+        VALUES (#{userUuid}, #{bookId}, #{chapterId}, #{eventTime})
+    </insert>
+
+</mapper>

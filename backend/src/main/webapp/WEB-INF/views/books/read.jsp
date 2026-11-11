@@ -207,6 +207,46 @@
             report(false);
         })();
     </script>
+    <script>
+        (function () {
+            var meta = document.getElementById('progressMeta');
+            var tokenHolder = document.getElementById('csrfTokenHolder');
+            if (!meta || !tokenHolder) return;
+
+            var bookId = meta.getAttribute('data-book-id');
+            var ctx = meta.getAttribute('data-ctx') || '';
+            var token = tokenHolder.value;
+            var url = ctx + '/books/' + bookId + '/reading-time';
+            var HEARTBEAT_MS = 15000;
+            var IDLE_LIMIT_MS = 90000;
+
+            var lastActivity = Date.now();
+            function markActive() {
+                lastActivity = Date.now();
+            }
+
+            ['scroll', 'mousemove', 'keydown', 'click', 'touchstart'].forEach(function (name) {
+                window.addEventListener(name, markActive, { passive: true });
+            });
+
+            var lastTick = Date.now();
+            setInterval(function () {
+                var now = Date.now();
+                if (document.visibilityState !== 'visible' || now - lastActivity > IDLE_LIMIT_MS) {
+                    lastTick = now;
+                    return;
+                }
+                var seconds = Math.min(Math.round((now - lastTick) / 1000), 120);
+                lastTick = now;
+                if (seconds <= 0) return;
+
+                var params = new URLSearchParams();
+                params.append('csrfToken', token);
+                params.append('seconds', String(seconds));
+                fetch(url, { method: 'POST', body: params, credentials: 'same-origin', keepalive: true });
+            }, HEARTBEAT_MS);
+        })();
+    </script>
 </c:if>
 
 <%@ include file="../common/foot.jspf" %>

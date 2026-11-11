@@ -19,11 +19,13 @@ import xyz.lingview.astra.common.ApiResponse;
 import xyz.lingview.astra.domain.BookChapter;
 import xyz.lingview.astra.dto.request.BookProgressDTO;
 import xyz.lingview.astra.dto.request.PageResult;
+import xyz.lingview.astra.dto.response.BookStatsDTO;
 import xyz.lingview.astra.dto.response.BookViewDTO;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
 import xyz.lingview.astra.security.CsrfTokenService;
 import xyz.lingview.astra.service.BookChapterService;
 import xyz.lingview.astra.service.BookService;
+import xyz.lingview.astra.service.BookStatsService;
 import xyz.lingview.astra.service.CurrentUserService;
 import xyz.lingview.astra.service.UserPermissionCheckService;
 
@@ -42,6 +44,9 @@ public class BookController {
 
     @Autowired
     private BookChapterService bookChapterService;
+
+    @Autowired
+    private BookStatsService bookStatsService;
 
     @Autowired
     private CurrentUserService currentUserService;
@@ -116,6 +121,7 @@ public class BookController {
             model.addAttribute("book", book);
             model.addAttribute("toc", toc);
             model.addAttribute("noChapter", true);
+            model.addAttribute("canManage", canManage());
             model.addAttribute("csrfToken", csrfTokenService.getToken(session));
             return "books/read";
         }
@@ -127,6 +133,7 @@ public class BookController {
         model.addAttribute("prevChapter", index > 0 ? toc.get(index - 1) : null);
         model.addAttribute("nextChapter", index < toc.size() - 1 ? toc.get(index + 1) : null);
         model.addAttribute("restorePercent", bookService.touchProgress(id, current.getId(), userUuid));
+        model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/read";
     }
@@ -149,6 +156,34 @@ public class BookController {
         }
         BigDecimal percent = dto.getScroll_percent() == null ? BigDecimal.ZERO : dto.getScroll_percent();
         bookService.saveProgress(id, dto.getChapter_id(), percent, userUuid);
+        return ApiResponse.success("ok");
+    }
+
+    // 图书统计
+    @GetMapping("/stats")
+    public String stats(HttpSession session, Model model) {
+        model.addAttribute("canManage", canManage());
+        model.addAttribute("csrfToken", csrfTokenService.getToken(session));
+        return "books/stats";
+    }
+
+    // 图书统计数据
+    @GetMapping("/stats/data")
+    @ResponseBody
+    public ApiResponse<BookStatsDTO> statsData() {
+        return ApiResponse.success(bookStatsService.getStats());
+    }
+
+    // 阅读心跳
+    @PostMapping("/{id}/reading-time")
+    @ResponseBody
+    public ApiResponse<String> recordReadingTime(@PathVariable Integer id,
+                                                 @RequestParam(defaultValue = "0") int seconds) {
+        String userUuid = currentUserService.getCurrentUserUuid();
+        if (userUuid == null) {
+            return ApiResponse.error(401, "用户未登录");
+        }
+        bookStatsService.recordHeartbeat(id, seconds, userUuid);
         return ApiResponse.success("ok");
     }
 

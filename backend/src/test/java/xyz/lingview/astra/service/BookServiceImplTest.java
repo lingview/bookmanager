@@ -31,6 +31,9 @@ class BookServiceImplTest {
     @Mock
     private BookMapper bookMapper;
 
+    @Mock
+    private BookStatsService bookStatsService;
+
     @InjectMocks
     private BookServiceImpl bookService;
 
@@ -96,6 +99,7 @@ class BookServiceImplTest {
 
         assertEquals(BigDecimal.ZERO, restore);
         verify(bookMapper).insertProgress(any(BookReadingProgress.class));
+        verify(bookStatsService).recordChapterOpen(1, 10, "u1");
     }
 
     @Test
@@ -109,6 +113,7 @@ class BookServiceImplTest {
 
         assertEquals(new BigDecimal("42.50"), restore);
         verify(bookMapper, never()).updateProgressChapter(any(), any(), any());
+        verify(bookStatsService, never()).recordChapterOpen(any(), any(), any());
     }
 
     @Test
@@ -122,5 +127,6 @@ class BookServiceImplTest {
 
         assertEquals(BigDecimal.ZERO, restore);
         verify(bookMapper).updateProgressChapter("u1", 1, 11);
+        verify(bookStatsService).recordChapterOpen(1, 11, "u1");
     }
 }
