@@ -110,7 +110,8 @@
         .shelf-slot {
             position: relative;
             flex: 0 0 156px;
-            height: 296px;
+            min-width: 0;
+            height: 282px;
             margin-bottom: 26px;
             padding: 0 10px;
         }
@@ -178,15 +179,14 @@
         .book-label { padding-top: 16px; }
 
         .book-title {
+            display: block;
             color: #303133;
             font-weight: 600;
             font-size: 13px;
             line-height: 1.4;
-            min-height: 2.8em;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+            white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .book-meta {
