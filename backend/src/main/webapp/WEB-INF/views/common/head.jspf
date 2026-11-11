@@ -111,6 +111,7 @@
             position: relative;
             flex: 0 0 156px;
             height: 296px;
+            margin-bottom: 26px;
             padding: 0 10px;
         }
 
