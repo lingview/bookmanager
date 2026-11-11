@@ -353,10 +353,10 @@ public class InitController {
         // 数据源配置
         ymlContent.append("  datasource:\n");
         if (sqlite) {
-            Path dbPath = resolveSqlitePath(sqlitePath);
+            resolveSqlitePath(sqlitePath);
             ymlContent.append("    driver-class-name: org.sqlite.JDBC\n");
             ymlContent.append("    url: jdbc:sqlite:")
-                    .append(dbPath.toString().replace('\\', '/'))
+                    .append(sqlitePath.trim().replace('\\', '/'))
                     .append("?journal_mode=WAL&busy_timeout=5000&foreign_keys=on\n");
             ymlContent.append("    hikari:\n");
             ymlContent.append("      maximum-pool-size: 2\n");

@@ -10,3 +10,4 @@ application-setup.properties
 qodana.yaml
 .random_salt
 backend/data/
+dist/
