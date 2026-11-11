@@ -4,10 +4,35 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="xyz.lingview.astra.mapper.BookChapterMapper">
 
-    <select id="selectChapterSummaries" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">
-        SELECT id, title, sort_order
+    <sql id="chapterSummaryColumns">
+        id, title, sort_order
+    </sql>
+
+    <select id="selectAllChapterSummaries" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">
+        SELECT
+        <include refid="chapterSummaryColumns"/>
         FROM book_chapter
         WHERE book_id = #{bookId} AND status = 1
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectChapterSummaries" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">
+        SELECT
+        <include refid="chapterSummaryColumns"/>
+        FROM book_chapter
+        WHERE book_id = #{bookId} AND status = 1
+        ORDER BY sort_order, id
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="selectChapterSummariesByIds" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">
+        SELECT
+        <include refid="chapterSummaryColumns"/>
+        FROM book_chapter
+        WHERE book_id = #{bookId} AND status = 1 AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
         ORDER BY sort_order, id
     </select>
 

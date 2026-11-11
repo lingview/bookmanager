@@ -79,7 +79,7 @@ public class BookController {
             return "error/404";
         }
         model.addAttribute("book", book);
-        model.addAttribute("toc", bookChapterService.listChapters(id));
+        model.addAttribute("toc", bookChapterService.listAllChapters(id));
         model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/detail";
@@ -97,7 +97,7 @@ public class BookController {
             return "error/404";
         }
 
-        List<ChapterSummaryDTO> toc = bookChapterService.listChapters(id);
+        List<ChapterSummaryDTO> toc = bookChapterService.listAllChapters(id);
         ChapterSummaryDTO current = null;
         if (chapterId != null) {
             for (ChapterSummaryDTO summary : toc) {

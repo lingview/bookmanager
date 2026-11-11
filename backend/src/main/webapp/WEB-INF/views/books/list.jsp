@@ -36,35 +36,40 @@
         </p>
     </c:when>
     <c:otherwise>
-        <div class="book-grid">
+        <div class="shelf">
             <c:forEach var="b" items="${pageResult.data}">
-                <div class="book-card">
-                    <a class="cover" href="${ctx}/books/${b.id}">
-                        <c:choose>
-                            <c:when test="${not empty b.cover_url}">
-                                <img src="<c:out value='${b.cover_url}'/>" alt="">
-                            </c:when>
-                            <c:otherwise>无封面</c:otherwise>
-                        </c:choose>
+                <div class="shelf-slot">
+                    <a class="book-cover" href="${ctx}/books/${b.id}">
+                        <span class="thumb ${empty b.cover_url ? 'thumb-empty' : ''}">
+                            <c:choose>
+                                <c:when test="${not empty b.cover_url}">
+                                    <img src="<c:out value='${b.cover_url}'/>" alt="">
+                                </c:when>
+                                <c:otherwise>无封面</c:otherwise>
+                            </c:choose>
+                        </span>
                     </a>
-                    <div class="book-info">
-                        <a class="book-title" href="${ctx}/books/${b.id}"><c:out value="${b.title}"/></a>
-                        <span class="book-meta">
+                    <span class="shelf-plank"></span>
+                    <div class="book-label">
+                        <a class="book-title" href="${ctx}/books/${b.id}"
+                           title="<c:out value='${b.title}'/>"><c:out value="${b.title}"/></a>
+                        <div class="book-meta">
                             <c:out value="${b.author}"/>
                             <c:if test="${not empty b.author and not empty b.category_name}"> · </c:if>
                             <c:out value="${b.category_name}"/>
-                        </span>
-                        <span class="book-meta">${b.chapter_count} 章</span>
-                        <c:choose>
-                            <c:when test="${not empty b.progress_chapter_id}">
-                                <a class="btn small" href="${ctx}/books/${b.id}/read?chapterId=${b.progress_chapter_id}">
-                                    继续阅读 · <c:out value="${b.progress_chapter_title}"/>
-                                </a>
-                            </c:when>
-                            <c:when test="${b.chapter_count > 0}">
-                                <a class="btn small ghost" href="${ctx}/books/${b.id}/read">开始阅读</a>
-                            </c:when>
-                        </c:choose>
+                            · ${b.chapter_count} 章
+                        </div>
+                        <div class="book-actions">
+                            <c:choose>
+                                <c:when test="${not empty b.progress_chapter_id}">
+                                    <a class="chip" href="${ctx}/books/${b.id}/read?chapterId=${b.progress_chapter_id}"
+                                       title="继续阅读：<c:out value='${b.progress_chapter_title}'/>">继续阅读</a>
+                                </c:when>
+                                <c:when test="${b.chapter_count > 0}">
+                                    <a class="chip" href="${ctx}/books/${b.id}/read">开始阅读</a>
+                                </c:when>
+                            </c:choose>
+                        </div>
                     </div>
                 </div>
             </c:forEach>

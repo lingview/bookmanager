@@ -10,7 +10,14 @@ import java.util.List;
 @Mapper
 public interface BookChapterMapper {
 
-    List<ChapterSummaryDTO> selectChapterSummaries(@Param("bookId") Integer bookId);
+    List<ChapterSummaryDTO> selectAllChapterSummaries(@Param("bookId") Integer bookId);
+
+    List<ChapterSummaryDTO> selectChapterSummaries(@Param("bookId") Integer bookId,
+                                                   @Param("offset") int offset,
+                                                   @Param("limit") int limit);
+
+    List<ChapterSummaryDTO> selectChapterSummariesByIds(@Param("bookId") Integer bookId,
+                                                       @Param("ids") List<Integer> ids);
 
     BookChapter selectChapter(@Param("id") Integer id);
 

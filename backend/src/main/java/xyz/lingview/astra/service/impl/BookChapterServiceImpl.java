@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.lingview.astra.domain.BookChapter;
 import xyz.lingview.astra.dto.request.BookChapterFormDTO;
+import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
 import xyz.lingview.astra.mapper.BookChapterMapper;
 import xyz.lingview.astra.service.BookChapterService;
@@ -18,10 +19,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -30,6 +33,8 @@ public class BookChapterServiceImpl implements BookChapterService {
 
     private static final long MAX_IMPORT_SIZE = 20L * 1024 * 1024;
     private static final int MAX_IMPORT_CHAPTERS = 2000;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final int SORT_STEP = 10;
     private static final String FALLBACK_TITLE = "导入章节";
     private static final Pattern CHAPTER_HEADING = Pattern.compile(
@@ -39,8 +44,25 @@ public class BookChapterServiceImpl implements BookChapterService {
     private BookChapterMapper chapterMapper;
 
     @Override
-    public List<ChapterSummaryDTO> listChapters(Integer bookId) {
-        return chapterMapper.selectChapterSummaries(bookId);
+    public List<ChapterSummaryDTO> listAllChapters(Integer bookId) {
+        return chapterMapper.selectAllChapterSummaries(bookId);
+    }
+
+    @Override
+    public PageResult<ChapterSummaryDTO> listChapterPage(Integer bookId, int pageNum, int pageSize) {
+        int page = Math.max(pageNum, 1);
+        int size = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
+        int total = chapterMapper.countActiveChapters(bookId);
+        List<ChapterSummaryDTO> data = chapterMapper.selectChapterSummaries(
+                bookId, (page - 1) * size, size);
+
+        PageResult<ChapterSummaryDTO> result = new PageResult<>();
+        result.setData(data);
+        result.setTotal(total);
+        result.setPage(page);
+        result.setSize(size);
+        result.setTotal_pages((int) Math.ceil((double) total / size));
+        return result;
     }
 
     @Override
@@ -87,18 +109,39 @@ public class BookChapterServiceImpl implements BookChapterService {
         if (ids == null || ids.isEmpty()) {
             throw new RuntimeException("章节列表为空");
         }
-        Set<Integer> existing = new LinkedHashSet<>();
-        for (ChapterSummaryDTO chapter : chapterMapper.selectChapterSummaries(bookId)) {
-            existing.add(chapter.getId());
-        }
-        Set<Integer> submitted = new LinkedHashSet<>(ids);
-        if (submitted.size() != ids.size() || !existing.equals(submitted)) {
+        if (new LinkedHashSet<>(ids).size() != ids.size()) {
             throw new RuntimeException("章节列表已变化，请刷新后重试");
         }
-        int order = SORT_STEP;
+        List<ChapterSummaryDTO> rows = chapterMapper.selectChapterSummariesByIds(bookId, ids);
+        if (rows.size() != ids.size()) {
+            throw new RuntimeException("章节列表已变化，请刷新后重试");
+        }
+        List<Integer> positions = new ArrayList<>();
+        Map<Integer, Integer> indexOf = new HashMap<>();
+        List<ChapterSummaryDTO> all = chapterMapper.selectAllChapterSummaries(bookId);
+        for (int i = 0; i < all.size(); i++) {
+            indexOf.put(all.get(i).getId(), i);
+        }
         for (Integer id : ids) {
-            chapterMapper.updateChapterSort(id, order);
-            order += SORT_STEP;
+            Integer position = indexOf.get(id);
+            if (position == null) {
+                throw new RuntimeException("章节列表已变化，请刷新后重试");
+            }
+            positions.add(position);
+        }
+        Collections.sort(positions);
+        for (int i = 1; i < positions.size(); i++) {
+            if (positions.get(i) != positions.get(i - 1) + 1) {
+                throw new RuntimeException("只能在当前页内调整章节顺序");
+            }
+        }
+        List<Integer> orderPool = new ArrayList<>();
+        for (ChapterSummaryDTO row : rows) {
+            orderPool.add(row.getSort_order());
+        }
+        Collections.sort(orderPool);
+        for (int i = 0; i < ids.size(); i++) {
+            chapterMapper.updateChapterSort(ids.get(i), orderPool.get(i));
         }
     }
 

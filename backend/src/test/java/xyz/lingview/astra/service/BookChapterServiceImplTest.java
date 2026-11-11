@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import xyz.lingview.astra.domain.BookChapter;
+import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
 import xyz.lingview.astra.mapper.BookChapterMapper;
 import xyz.lingview.astra.service.impl.BookChapterServiceImpl;
@@ -55,20 +56,47 @@ class BookChapterServiceImplTest {
     }
 
     @Test
-    void reorder_shouldRejectMismatchedIds() {
-        when(chapterMapper.selectChapterSummaries(1)).thenReturn(List.of(summary(1), summary(2)));
+    void reorder_shouldRejectIdsOutsideBook() {
+        when(chapterMapper.selectChapterSummariesByIds(1, List.of(1, 3)))
+                .thenReturn(List.of(summary(1, 10)));
 
         assertThrows(RuntimeException.class, () -> chapterService.reorder(1, List.of(1, 3)));
     }
 
     @Test
-    void reorder_shouldRewriteSortOrder() {
-        when(chapterMapper.selectChapterSummaries(1)).thenReturn(List.of(summary(1), summary(2)));
+    void reorder_shouldReuseExistingSortOrders() {
+        when(chapterMapper.selectAllChapterSummaries(1))
+                .thenReturn(List.of(summary(1, 10), summary(2, 20)));
+        when(chapterMapper.selectChapterSummariesByIds(1, List.of(2, 1)))
+                .thenReturn(List.of(summary(1, 10), summary(2, 20)));
 
         chapterService.reorder(1, List.of(2, 1));
 
         verify(chapterMapper).updateChapterSort(2, 10);
         verify(chapterMapper).updateChapterSort(1, 20);
+    }
+
+    @Test
+    void reorder_shouldRejectNonContiguousSelection() {
+        when(chapterMapper.selectAllChapterSummaries(1))
+                .thenReturn(List.of(summary(1, 10), summary(2, 20), summary(3, 30)));
+        when(chapterMapper.selectChapterSummariesByIds(1, List.of(1, 3)))
+                .thenReturn(List.of(summary(1, 10), summary(3, 30)));
+
+        assertThrows(RuntimeException.class, () -> chapterService.reorder(1, List.of(1, 3)));
+    }
+
+    @Test
+    void listChapterPage_shouldComputeOffsetAndTotalPages() {
+        when(chapterMapper.countActiveChapters(1)).thenReturn(45);
+        when(chapterMapper.selectChapterSummaries(1, 20, 20)).thenReturn(List.of());
+
+        PageResult<ChapterSummaryDTO> page = chapterService.listChapterPage(1, 2, 20);
+
+        assertEquals(2, page.getPage());
+        assertEquals(20, page.getSize());
+        assertEquals(45, page.getTotal());
+        assertEquals(3, page.getTotal_pages());
     }
 
     @Test
@@ -136,9 +164,10 @@ class BookChapterServiceImplTest {
         return new MockMultipartFile("file", filename, "text/plain", content);
     }
 
-    private ChapterSummaryDTO summary(int id) {
+    private ChapterSummaryDTO summary(int id, int sortOrder) {
         ChapterSummaryDTO summary = new ChapterSummaryDTO();
         summary.setId(id);
+        summary.setSort_order(sortOrder);
         return summary;
     }
 }

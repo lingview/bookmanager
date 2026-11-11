@@ -3,13 +3,16 @@ package xyz.lingview.astra.service;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.lingview.astra.domain.BookChapter;
 import xyz.lingview.astra.dto.request.BookChapterFormDTO;
+import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
 
 import java.util.List;
 
 public interface BookChapterService {
 
-    List<ChapterSummaryDTO> listChapters(Integer bookId);
+    List<ChapterSummaryDTO> listAllChapters(Integer bookId);
+
+    PageResult<ChapterSummaryDTO> listChapterPage(Integer bookId, int pageNum, int pageSize);
 
     BookChapter getChapter(Integer bookId, Integer chapterId);
 

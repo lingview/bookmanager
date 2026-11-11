@@ -9,7 +9,7 @@
     <a class="btn" href="${ctx}/books/${book.id}/chapters/new">新增章节</a>
     <a class="btn ghost" href="${ctx}/books/${book.id}">返回详情</a>
     <span class="grow"></span>
-    <span class="muted">拖拽行可调整章节顺序</span>
+    <span class="muted">共 ${pageResult.total} 章，拖拽可调整当前页顺序</span>
 </div>
 
 <div class="card" style="margin-bottom: 20px;">
@@ -26,7 +26,7 @@
 </div>
 
 <c:choose>
-    <c:when test="${empty chapters}">
+    <c:when test="${empty pageResult.data}">
         <p class="empty">还没有章节，可以手动新增或批量导入</p>
     </c:when>
     <c:otherwise>
@@ -40,7 +40,7 @@
             </tr>
             </thead>
             <tbody>
-            <c:forEach var="ch" items="${chapters}">
+            <c:forEach var="ch" items="${pageResult.data}">
                 <tr class="drag-row" draggable="true" data-id="${ch.id}">
                     <td class="drag-handle">⠿</td>
                     <td>${ch.sort_order}</td>
@@ -58,6 +58,21 @@
             </c:forEach>
             </tbody>
         </table>
+
+        <c:if test="${pageResult.total_pages > 1}">
+            <div class="pagination">
+                <c:forEach begin="1" end="${pageResult.total_pages}" var="p">
+                    <c:choose>
+                        <c:when test="${p == pageResult.page}">
+                            <span class="page-current">${p}</span>
+                        </c:when>
+                        <c:otherwise>
+                            <a class="page-link" href="${ctx}/books/${book.id}/chapters?page=${p}">${p}</a>
+                        </c:otherwise>
+                    </c:choose>
+                </c:forEach>
+            </div>
+        </c:if>
 
         <input type="hidden" id="csrfTokenHolder" value="<c:out value='${csrfToken}'/>">
         <input type="hidden" id="orderMeta" data-url="${ctx}/books/${book.id}/chapters/reorder">

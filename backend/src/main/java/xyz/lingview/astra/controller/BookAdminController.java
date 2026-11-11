@@ -133,15 +133,16 @@ public class BookAdminController {
     // 章节管理页
     @GetMapping("/{id}/chapters")
     @RequiresPermission(MANAGE_PERMISSION)
-    public String chapterList(@PathVariable Integer id, HttpSession session, Model model,
-                              HttpServletResponse response) {
+    public String chapterList(@PathVariable Integer id,
+                              @RequestParam(defaultValue = "1") int page,
+                              HttpSession session, Model model, HttpServletResponse response) {
         BookViewDTO book = bookService.getBook(id, null);
         if (book == null) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return "error/404";
         }
         model.addAttribute("book", book);
-        model.addAttribute("chapters", bookChapterService.listChapters(id));
+        model.addAttribute("pageResult", bookChapterService.listChapterPage(id, page, 20));
         model.addAttribute("canManage", true);
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/chapters";
