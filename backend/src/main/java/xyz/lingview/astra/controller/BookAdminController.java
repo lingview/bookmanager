@@ -78,7 +78,7 @@ public class BookAdminController {
             return renderBookForm(model, session, null, null, form, fieldErrors(binding), null);
         }
         try {
-            Integer id = bookService.createBook(form, resolveCover(request, cover, null));
+            Integer id = bookService.createBook(form, resolveCover(request, cover, form.getCover_url()));
             return "redirect:/books/" + id;
         } catch (RuntimeException e) {
             return renderBookForm(model, session, null, null, form, null, e.getMessage());

@@ -334,10 +334,50 @@
 
         .reader {
             display: grid;
-            grid-template-columns: 240px minmax(0, 1fr);
+            grid-template-columns: 240px minmax(0, 1fr) auto;
             gap: 20px;
             align-items: start;
         }
+
+        .reader-rail {
+            position: sticky;
+            top: 72px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 64px;
+        }
+
+        .rail-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px;
+            background: #fff;
+            border: 1px solid #ebeef5;
+            border-radius: 10px;
+        }
+
+        .rail-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 2px;
+            border-radius: 6px;
+            color: #606266;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .rail-btn:hover {
+            background: #ecf5ff;
+            color: #409eff;
+            text-decoration: none;
+        }
+
+        .rail-icon { font-size: 15px; line-height: 1; }
+        .rail-text { white-space: nowrap; }
 
         .toc {
             background: #fff;
@@ -364,8 +404,6 @@
             font-size: 15px;
         }
 
-        .chapter-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
-
         .drag-row { cursor: move; }
         .drag-row.dragging { opacity: .4; }
         .drag-handle { color: #c0c4cc; margin-right: 8px; }
@@ -377,6 +415,25 @@
         .toc-card { border: none; padding: 0; }
         .muted { color: #909399; font-size: 13px; }
         .section-title { font-weight: 600; margin-bottom: 12px; }
+
+        @media (max-width: 900px) {
+            .reader { grid-template-columns: 1fr; }
+
+            .reader-rail {
+                position: static;
+                flex-direction: row;
+                width: auto;
+                gap: 10px;
+            }
+
+            .rail-group { flex-direction: row; }
+
+            .rail-btn {
+                flex-direction: row;
+                gap: 6px;
+                padding: 8px 12px;
+            }
+        }
 
         @media (max-width: 860px) {
             .reader { grid-template-columns: 1fr; }

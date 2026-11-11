@@ -27,26 +27,43 @@
                     <div class="chapter-content"><c:out value="${chapter.content}"/></div>
                 </article>
 
-                <div class="chapter-nav">
-                    <c:choose>
-                        <c:when test="${not empty prevChapter}">
-                            <a class="btn ghost" href="${ctx}/books/${book.id}/read?chapterId=${prevChapter.id}">← 上一章</a>
-                        </c:when>
-                        <c:otherwise><span></span></c:otherwise>
-                    </c:choose>
-                    <a class="btn ghost" href="${ctx}/books/${book.id}">返回详情</a>
-                    <c:choose>
-                        <c:when test="${not empty nextChapter}">
-                            <a class="btn ghost" href="${ctx}/books/${book.id}/read?chapterId=${nextChapter.id}">下一章 →</a>
-                        </c:when>
-                        <c:otherwise><span></span></c:otherwise>
-                    </c:choose>
-                </div>
-
                 <p class="muted" style="margin-top: 16px;">阅读位置：<span id="progressLabel">0%</span></p>
             </c:otherwise>
         </c:choose>
     </div>
+
+    <c:if test="${not noChapter}">
+        <aside class="reader-rail">
+            <c:if test="${not empty prevChapter or not empty nextChapter}">
+                <div class="rail-group">
+                    <c:if test="${not empty prevChapter}">
+                        <a class="rail-btn" title="上一章"
+                           href="${ctx}/books/${book.id}/read?chapterId=${prevChapter.id}">
+                            <span class="rail-icon">↑</span>
+                            <span class="rail-text">上一章</span>
+                        </a>
+                    </c:if>
+                    <c:if test="${not empty nextChapter}">
+                        <a class="rail-btn" title="下一章"
+                           href="${ctx}/books/${book.id}/read?chapterId=${nextChapter.id}">
+                            <span class="rail-icon">↓</span>
+                            <span class="rail-text">下一章</span>
+                        </a>
+                    </c:if>
+                </div>
+            </c:if>
+            <div class="rail-group">
+                <a class="rail-btn" title="返回首页" href="${ctx}/">
+                    <span class="rail-icon">⌂</span>
+                    <span class="rail-text">首页</span>
+                </a>
+                <a class="rail-btn" title="返回详情" href="${ctx}/books/${book.id}">
+                    <span class="rail-icon">☰</span>
+                    <span class="rail-text">详情</span>
+                </a>
+            </div>
+        </aside>
+    </c:if>
 </div>
 
 <c:if test="${not noChapter}">
