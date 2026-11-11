@@ -24,7 +24,7 @@
             <c:otherwise>
                 <article class="chapter">
                     <h1 class="chapter-title"><c:out value="${chapter.title}"/></h1>
-                    <div class="chapter-content"><c:out value="${chapter.content}"/></div>
+                    <div class="chapter-content" id="chapterContent"><c:out value="${chapter.content}"/></div>
                 </article>
 
                 <p class="muted" style="margin-top: 16px;">阅读位置：<span id="progressLabel">0%</span></p>
@@ -34,6 +34,20 @@
 
     <c:if test="${not noChapter}">
         <aside class="reader-rail">
+            <div class="rail-group">
+                <button type="button" class="rail-btn" id="fontMinus" title="缩小字号">
+                    <span class="rail-icon">A−</span>
+                    <span class="rail-text">缩小</span>
+                </button>
+                <button type="button" class="rail-btn" id="fontPlus" title="放大字号">
+                    <span class="rail-icon">A+</span>
+                    <span class="rail-text">放大</span>
+                </button>
+                <button type="button" class="rail-btn" id="fontReset" title="恢复默认字号">
+                    <span class="rail-icon">A</span>
+                    <span class="rail-text">默认</span>
+                </button>
+            </div>
             <c:if test="${not empty prevChapter or not empty nextChapter}">
                 <div class="rail-group">
                     <c:if test="${not empty prevChapter}">
@@ -70,6 +84,60 @@
     <input type="hidden" id="csrfTokenHolder" value="<c:out value='${csrfToken}'/>">
     <input type="hidden" id="progressMeta" data-book-id="${book.id}" data-chapter-id="${chapter.id}"
            data-ctx="<c:out value='${ctx}'/>" data-restore="${restorePercent}">
+    <script>
+        (function () {
+            var content = document.getElementById('chapterContent');
+            if (!content) return;
+
+            var STORAGE_KEY = 'reader-font-size';
+            var SIZES = [13, 14, 15, 16, 18, 20, 22];
+            var DEFAULT_INDEX = 2;
+            var index = DEFAULT_INDEX;
+
+            try {
+                var saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+                if (!isNaN(saved) && saved >= 0 && saved < SIZES.length) {
+                    index = saved;
+                }
+            } catch (e) {
+            }
+
+            var minus = document.getElementById('fontMinus');
+            var plus = document.getElementById('fontPlus');
+            var reset = document.getElementById('fontReset');
+
+            function apply() {
+                content.style.fontSize = SIZES[index] + 'px';
+                minus.disabled = index === 0;
+                plus.disabled = index === SIZES.length - 1;
+                try {
+                    localStorage.setItem(STORAGE_KEY, String(index));
+                } catch (e) {
+                }
+            }
+
+            minus.addEventListener('click', function () {
+                if (index > 0) {
+                    index--;
+                    apply();
+                }
+            });
+
+            plus.addEventListener('click', function () {
+                if (index < SIZES.length - 1) {
+                    index++;
+                    apply();
+                }
+            });
+
+            reset.addEventListener('click', function () {
+                index = DEFAULT_INDEX;
+                apply();
+            });
+
+            apply();
+        })();
+    </script>
     <script>
         (function () {
             var meta = document.getElementById('progressMeta');

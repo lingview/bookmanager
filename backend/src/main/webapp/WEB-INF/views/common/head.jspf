@@ -363,17 +363,32 @@
             flex-direction: column;
             align-items: center;
             gap: 2px;
+            width: 100%;
             padding: 8px 2px;
+            border: none;
             border-radius: 6px;
+            background: none;
             color: #606266;
             font-size: 12px;
+            font-family: inherit;
             line-height: 1.2;
+            cursor: pointer;
         }
 
         .rail-btn:hover {
             background: #ecf5ff;
             color: #409eff;
             text-decoration: none;
+        }
+
+        .rail-btn:disabled {
+            color: #c0c4cc;
+            cursor: default;
+        }
+
+        .rail-btn:disabled:hover {
+            background: none;
+            color: #c0c4cc;
         }
 
         .rail-icon { font-size: 15px; line-height: 1; }
