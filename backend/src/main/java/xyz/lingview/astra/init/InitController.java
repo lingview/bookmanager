@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import xyz.lingview.astra.config.ConfigInfo;
+import xyz.lingview.astra.config.DatabaseType;
 import xyz.lingview.astra.util.PasswordUtil;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 
 /**
@@ -40,11 +42,13 @@ public class InitController {
             @RequestParam String adminUsername,
             @RequestParam String adminPassword,
             @RequestParam Integer serverPort,
-            @RequestParam String mysqlHost,
-            @RequestParam Integer mysqlPort,
-            @RequestParam String mysqlDatabase,
-            @RequestParam String mysqlUser,
-            @RequestParam String mysqlPassword,
+            @RequestParam(defaultValue = "mysql") String databaseType,
+            @RequestParam(required = false) String sqlitePath,
+            @RequestParam(required = false) String mysqlHost,
+            @RequestParam(required = false) Integer mysqlPort,
+            @RequestParam(required = false) String mysqlDatabase,
+            @RequestParam(required = false) String mysqlUser,
+            @RequestParam(required = false) String mysqlPassword,
             @RequestParam(defaultValue = "false") boolean enableRedis,
             @RequestParam(required = false) String redisHost,
             @RequestParam(required = false) Integer redisPort,
@@ -59,28 +63,39 @@ public class InitController {
             @RequestParam(defaultValue = "false") boolean enableVirtualThreads,
             Model model) {
 
+        boolean sqlite = DatabaseType.SQLITE.matches(databaseType);
         try {
             // 生成配置文件
-            generateApplicationYml(adminUsername, adminPassword, serverPort,
+            generateApplicationYml(adminUsername, adminPassword, serverPort, sqlite, sqlitePath,
                     mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword,
                     enableRedis, redisHost, redisPort, redisPassword, redisDatabase,
                     hasAdvanced, logLevel, dataRoot, uploadDir, logRoot, enableVirtualThreads);
 
             if (!onlyGenerateConfig) {
-                // 初始化数据库
-                initializeDatabase(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword,
-                        adminUsername, adminPassword);
-
                 String latestVersion = readLatestFlywayVersion();
-                baselineFlyway(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword, latestVersion);
+                if (sqlite) {
+                    initializeSqliteDatabase(sqlitePath, adminUsername, adminPassword);
+                    baselineSqliteDatabase(sqlitePath, latestVersion);
+                } else {
+                    initializeDatabase(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword,
+                            adminUsername, adminPassword);
+                    baselineFlyway(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword, latestVersion);
+                }
                 model.addAttribute("success", true);
                 model.addAttribute("message", "配置文件生成成功！数据库初始化完成！请重启应用。");
             } else {
                 // 仅生成配置文件
                 String latestVersion = readLatestFlywayVersion();
+                boolean hasHistory = sqlite
+                        ? checkSqliteSchemaHistoryExists(sqlitePath)
+                        : checkFlywaySchemaHistoryExists(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword);
 
-                if (!checkFlywaySchemaHistoryExists(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword)) {
-                    baselineFlyway(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword, latestVersion);
+                if (!hasHistory) {
+                    if (sqlite) {
+                        baselineSqliteDatabase(sqlitePath, latestVersion);
+                    } else {
+                        baselineFlyway(mysqlHost, mysqlPort, mysqlDatabase, mysqlUser, mysqlPassword, latestVersion);
+                    }
                     model.addAttribute("message", "配置文件已重新生成！由于数据库中没有flyway历史记录，已执行基线设置。请重启应用以使新配置生效。");
                 } else {
                     model.addAttribute("message", "配置文件已重新生成！数据库中已有flyway历史记录，未执行基线设置。请重启应用以使新配置生效。");
@@ -146,9 +161,61 @@ public class InitController {
 
             try (Connection dbConnection = DriverManager.getConnection(targetDbUrl, mysqlUser, mysqlPassword)) {
 
-                importSqlFile(dbConnection, adminUsername, adminPassword);
+                importSqlFile(dbConnection, "init.sql", adminUsername, adminPassword);
             }
         }
+    }
+
+    private void initializeSqliteDatabase(String sqlitePath, String adminUsername, String adminPassword)
+            throws Exception {
+        Path dbPath = resolveSqlitePath(sqlitePath);
+        Path parent = dbPath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        Files.deleteIfExists(dbPath);
+
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            importSqlFile(connection, "init-sqlite.sql", adminUsername, adminPassword);
+        }
+    }
+
+    private Path resolveSqlitePath(String sqlitePath) {
+        if (sqlitePath == null || sqlitePath.isBlank()) {
+            throw new IllegalArgumentException("SQLite 数据库文件路径不能为空");
+        }
+        return Path.of(sqlitePath.trim()).toAbsolutePath().normalize();
+    }
+
+    private boolean checkSqliteSchemaHistoryExists(String sqlitePath) throws SQLException {
+        Path dbPath = resolveSqlitePath(sqlitePath);
+        if (!Files.exists(dbPath)) {
+            return false;
+        }
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             PreparedStatement pstmt = connection.prepareStatement(
+                     "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'flyway_schema_history'")) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private void baselineSqliteDatabase(String sqlitePath, String latestVersion) {
+        Path dbPath = resolveSqlitePath(sqlitePath);
+        org.sqlite.SQLiteDataSource dataSource = new org.sqlite.SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + dbPath);
+
+        Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .locations(DatabaseType.SQLITE.migrationLocation())
+                .baselineOnMigrate(true)
+                .baselineVersion(latestVersion)
+                .load();
+
+        flyway.baseline();
+
+        log.info("Flyway baseline 成功（SQLite），版本: {}", latestVersion);
     }
 
     private String readLatestFlywayVersion() throws IOException {
@@ -178,7 +245,7 @@ public class InitController {
 
         Flyway flyway = Flyway.configure()
                 .dataSource(jdbcUrl, mysqlUser, mysqlPassword)
-                .locations("classpath:db/migration")
+                .locations(DatabaseType.MYSQL.migrationLocation())
                 .baselineOnMigrate(true)
                 .baselineVersion(latestVersion)
                 .load();
@@ -208,10 +275,11 @@ public class InitController {
         }
     }
 
-    private void importSqlFile(Connection connection, String newAdminUsername, String newAdminPassword) throws SQLException, IOException {
+    private void importSqlFile(Connection connection, String resourceName,
+                               String newAdminUsername, String newAdminPassword) throws SQLException, IOException {
         try {
             org.springframework.core.io.ClassPathResource resource =
-                    new org.springframework.core.io.ClassPathResource("init.sql");
+                    new org.springframework.core.io.ClassPathResource(resourceName);
             org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
                     connection,
                     new org.springframework.core.io.support.EncodedResource(resource, StandardCharsets.UTF_8));
@@ -256,6 +324,7 @@ public class InitController {
 
 
     private void generateApplicationYml(String adminUsername, String adminPassword, Integer serverPort,
+                                        boolean sqlite, String sqlitePath,
                                         String mysqlHost, Integer mysqlPort, String mysqlDatabase,
                                         String mysqlUser, String mysqlPassword,
                                         boolean enableRedis, String redisHost, Integer redisPort, String redisPassword,
@@ -281,19 +350,31 @@ public class InitController {
         ymlContent.append("    date-format: yyyy-MM-dd HH:mm:ss\n");
         ymlContent.append("\n");
 
-        // MySQL配置
+        // 数据源配置
         ymlContent.append("  datasource:\n");
-        ymlContent.append("    driver-class-name: com.mysql.cj.jdbc.Driver\n");
-        ymlContent.append("    url: jdbc:mysql://").append(mysqlHost).append(":").append(mysqlPort)
-                .append("/").append(mysqlDatabase).append("?characterEncoding=utf-8&nullCatalogMeansCurrent=true&serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true&useAffectedRows=true\n");
-        ymlContent.append("    username: ").append(mysqlUser).append("\n");
-        ymlContent.append("    password: \"").append(mysqlPassword).append("\"\n");
-        ymlContent.append("    hikari:\n");
-        ymlContent.append("      maximum-pool-size: 20\n");
-        ymlContent.append("      minimum-idle: 5\n");
-        ymlContent.append("      connection-timeout: 30000\n");
-        ymlContent.append("      idle-timeout: 600000\n");
-        ymlContent.append("      max-lifetime: 1800000\n");
+        if (sqlite) {
+            Path dbPath = resolveSqlitePath(sqlitePath);
+            ymlContent.append("    driver-class-name: org.sqlite.JDBC\n");
+            ymlContent.append("    url: jdbc:sqlite:")
+                    .append(dbPath.toString().replace('\\', '/'))
+                    .append("?journal_mode=WAL&busy_timeout=5000&foreign_keys=on\n");
+            ymlContent.append("    hikari:\n");
+            ymlContent.append("      maximum-pool-size: 2\n");
+            ymlContent.append("      minimum-idle: 1\n");
+            ymlContent.append("      connection-timeout: 30000\n");
+        } else {
+            ymlContent.append("    driver-class-name: com.mysql.cj.jdbc.Driver\n");
+            ymlContent.append("    url: jdbc:mysql://").append(mysqlHost).append(":").append(mysqlPort)
+                    .append("/").append(mysqlDatabase).append("?characterEncoding=utf-8&nullCatalogMeansCurrent=true&serverTimezone=GMT%2B8&useSSL=false&allowPublicKeyRetrieval=true&useAffectedRows=true\n");
+            ymlContent.append("    username: ").append(mysqlUser).append("\n");
+            ymlContent.append("    password: \"").append(mysqlPassword).append("\"\n");
+            ymlContent.append("    hikari:\n");
+            ymlContent.append("      maximum-pool-size: 20\n");
+            ymlContent.append("      minimum-idle: 5\n");
+            ymlContent.append("      connection-timeout: 30000\n");
+            ymlContent.append("      idle-timeout: 600000\n");
+            ymlContent.append("      max-lifetime: 1800000\n");
+        }
         ymlContent.append("\n");
 
         // Servlet配置

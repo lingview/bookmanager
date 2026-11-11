@@ -49,8 +49,8 @@ class BookServiceImplTest {
 
     @Test
     void listBooks_shouldCapPageSize() {
-        when(bookMapper.countBooks(eq("x"), isNull())).thenReturn(0);
-        when(bookMapper.selectBooks(eq("x"), isNull(), eq("u1"), eq(0), eq(100))).thenReturn(List.of());
+        when(bookMapper.countBooks(eq("%x%"), isNull())).thenReturn(0);
+        when(bookMapper.selectBooks(eq("%x%"), isNull(), eq("u1"), eq(0), eq(100))).thenReturn(List.of());
 
         PageResult<BookViewDTO> result = bookService.listBooks("  x  ", null, 1, 500, "u1");
 

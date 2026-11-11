@@ -22,7 +22,7 @@
         FROM book_chapter
         WHERE book_id = #{bookId} AND status = 1
         ORDER BY sort_order, id
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="selectChapterSummariesByIds" resultType="xyz.lingview.astra.dto.response.ChapterSummaryDTO">

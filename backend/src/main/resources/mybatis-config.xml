@@ -12,4 +12,8 @@
         <!-- <setting name="mapUnderscoreToCamelCase" value="true"/>  驼峰式命名 -->   <!-- 开不了一点纯属折磨QAQ -->
     </settings>
 
+    <typeHandlers>
+        <typeHandler handler="xyz.lingview.astra.util.PortableLocalDateTimeTypeHandler"/>
+    </typeHandlers>
+
 </configuration>

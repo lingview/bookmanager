@@ -75,6 +75,12 @@
             color: #606266;
         }
 
+        .form-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #909399;
+        }
+
         .form-control {
             width: 100%;
             padding: 10px 12px;
@@ -183,46 +189,71 @@
                 </div>
 
                 <div class="form-section">
-                    <h5>MySQL 数据库配置</h5>
+                    <h5>数据库配置</h5>
 
-                    <div class="row">
-                        <div class="col">
-                            <div class="form-group">
-                                <label class="form-label">主机地址</label>
-                                <input type="text" class="form-control"
-                                       name="mysqlHost" value="localhost">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" id="dbTypeMysql" name="databaseType" value="mysql" checked>
+                        <label class="form-check-label" for="dbTypeMysql">
+                            MySQL
+                        </label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" id="dbTypeSqlite" name="databaseType" value="sqlite">
+                        <label class="form-check-label" for="dbTypeSqlite">
+                            SQLite（单文件，无需安装数据库）
+                        </label>
+                    </div>
+
+                    <div id="mysqlFields">
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="form-label">主机地址</label>
+                                    <input type="text" class="form-control"
+                                           name="mysqlHost" value="localhost">
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="form-label">端口号</label>
+                                    <input type="number" class="form-control"
+                                           name="mysqlPort" value="3306">
+                                </div>
                             </div>
                         </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label class="form-label">端口号</label>
-                                <input type="number" class="form-control"
-                                       name="mysqlPort" value="3306">
+
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="form-label">数据库名</label>
+                                    <input type="text" class="form-control"
+                                           name="mysqlDatabase" value="astra_framework">
+                                </div>
                             </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label class="form-label">用户名</label>
+                                    <input type="text" class="form-control"
+                                           name="mysqlUser" value="root">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">密码</label>
+                            <input type="password" class="form-control"
+                                   name="mysqlPassword">
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col">
-                            <div class="form-group">
-                                <label class="form-label">数据库名</label>
-                                <input type="text" class="form-control"
-                                       name="mysqlDatabase" value="astra_framework">
-                            </div>
+                    <div id="sqliteFields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">数据库文件路径</label>
+                            <input type="text" class="form-control"
+                                   name="sqlitePath" value="data/app.data" disabled>
+                            <p class="form-hint">相对路径基于应用启动目录；文件不存在会自动创建</p>
                         </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label class="form-label">用户名</label>
-                                <input type="text" class="form-control"
-                                       name="mysqlUser" value="root">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">密码</label>
-                        <input type="password" class="form-control"
-                               name="mysqlPassword">
                     </div>
                 </div>
 
@@ -369,7 +400,27 @@
         }
     });
 
+    function syncDatabaseFields() {
+        const isSqlite = document.getElementById('dbTypeSqlite').checked;
+        document.getElementById('mysqlFields').style.display = isSqlite ? 'none' : 'block';
+        document.getElementById('sqliteFields').style.display = isSqlite ? 'block' : 'none';
+        ['mysqlHost', 'mysqlPort', 'mysqlDatabase', 'mysqlUser', 'mysqlPassword'].forEach(function (name) {
+            const field = document.querySelector('[name="' + name + '"]');
+            if (field) {
+                field.disabled = isSqlite;
+            }
+        });
+        const sqlitePath = document.querySelector('[name="sqlitePath"]');
+        if (sqlitePath) {
+            sqlitePath.disabled = !isSqlite;
+        }
+    }
+
+    document.getElementById('dbTypeMysql').addEventListener('change', syncDatabaseFields);
+    document.getElementById('dbTypeSqlite').addEventListener('change', syncDatabaseFields);
+
     window.addEventListener('load', function() {
+        syncDatabaseFields();
         const enableRedis = document.getElementById('enableRedis');
         const redisFields = ['redisHost', 'redisPort', 'redisPassword', 'redisDatabase'];
         const isChecked = enableRedis.checked;

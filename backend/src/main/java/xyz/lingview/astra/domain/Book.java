@@ -2,6 +2,8 @@ package xyz.lingview.astra.domain;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class Book {
     private Integer id;
@@ -11,4 +13,5 @@ public class Book {
     private String cover_url;
     private String description;
     private Integer status;
+    private LocalDateTime update_time;
 }

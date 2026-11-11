@@ -8,7 +8,7 @@
         b.id, b.title, b.author, b.category_id,
         c.name AS category_name,
         b.cover_url, b.description,
-        DATE_FORMAT(b.update_time, '%Y-%m-%d %H:%i') AS update_time,
+        b.update_time,
         (SELECT COUNT(*) FROM book_chapter ch WHERE ch.book_id = b.id AND ch.status = 1) AS chapter_count,
         p.chapter_id AS progress_chapter_id,
         pc.title AS progress_chapter_title,
@@ -18,8 +18,8 @@
     <sql id="bookFilters">
         <where>
             b.status = 1
-            <if test="keyword != null and keyword != ''">
-                AND (b.title LIKE CONCAT('%', #{keyword}, '%') OR b.author LIKE CONCAT('%', #{keyword}, '%'))
+            <if test="keywordPattern != null">
+                AND (b.title LIKE #{keywordPattern} OR b.author LIKE #{keywordPattern})
             </if>
             <if test="categoryId != null">
                 AND b.category_id = #{categoryId}
@@ -42,7 +42,7 @@
         LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
         <include refid="bookFilters"/>
         ORDER BY b.update_time DESC, b.id DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="selectBook" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
@@ -66,7 +66,8 @@
             author = #{author},
             category_id = #{category_id},
             cover_url = #{cover_url},
-            description = #{description}
+            description = #{description},
+            update_time = #{update_time}
         WHERE id = #{id} AND status = 1
     </update>
 

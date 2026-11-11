@@ -18,7 +18,7 @@
         JOIN user_information u ON a.uuid = u.uuid
         WHERE a.status = 1
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countAll" resultType="int">
@@ -34,7 +34,7 @@
         WHERE a.status = 1
           AND a.uuid = #{uuid}
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByUuid" resultType="int">
@@ -68,47 +68,47 @@
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
         WHERE a.status = 1
-           OR (a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR))
+           OR (a.status = 0 AND a.deleted_time >= #{cutoff})
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countAllWithRecentDeleted" resultType="int">
         SELECT COUNT(*)
         FROM attachment
         WHERE status = 1
-           OR (status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR))
+           OR (status = 0 AND deleted_time >= #{cutoff})
     </select>
 
     <select id="selectDeletedOnlyPage" resultType="xyz.lingview.astra.domain.AttachmentManagement">
         SELECT a.uuid, a.attachment_id, a.attachment_path, a.original_filename, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE a.status = 0 AND a.deleted_time >= #{cutoff}
         ORDER BY a.deleted_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countDeletedOnly" resultType="int">
         SELECT COUNT(*)
         FROM attachment
-        WHERE status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE status = 0 AND deleted_time >= #{cutoff}
     </select>
 
     <select id="selectPageByUuidWithRecentDeleted" resultType="xyz.lingview.astra.domain.AttachmentManagement">
         SELECT a.uuid, a.attachment_id, a.original_filename, a.attachment_path, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE (a.status = 1 OR (a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)))
+        WHERE (a.status = 1 OR (a.status = 0 AND a.deleted_time >= #{cutoff}))
           AND a.uuid = #{uuid}
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByUuidWithRecentDeleted" resultType="int">
         SELECT COUNT(*)
         FROM attachment
-        WHERE (status = 1 OR (status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)))
+        WHERE (status = 1 OR (status = 0 AND deleted_time >= #{cutoff}))
           AND uuid = #{uuid}
     </select>
 
@@ -116,16 +116,16 @@
         SELECT a.uuid, a.attachment_id, a.original_filename, a.attachment_path, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE a.status = 0 AND a.deleted_time >= #{cutoff}
           AND a.uuid = #{uuid}
         ORDER BY a.deleted_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countDeletedOnlyByUuid" resultType="int">
         SELECT COUNT(*)
         FROM attachment
-        WHERE status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE status = 0 AND deleted_time >= #{cutoff}
           AND uuid = #{uuid}
     </select>
 
@@ -138,7 +138,7 @@
         WHERE a.status = 1
           AND a.uuid = #{userUuid}
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByUserUuid" resultType="int">
@@ -152,16 +152,16 @@
         SELECT a.uuid, a.attachment_id, a.original_filename, a.attachment_path, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE (a.status = 1 OR (a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)))
+        WHERE (a.status = 1 OR (a.status = 0 AND a.deleted_time >= #{cutoff}))
           AND a.uuid = #{userUuid}
         ORDER BY a.create_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countByUserUuidWithDeleted" resultType="int">
         SELECT COUNT(*)
         FROM attachment
-        WHERE (status = 1 OR (status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)))
+        WHERE (status = 1 OR (status = 0 AND deleted_time >= #{cutoff}))
           AND uuid = #{userUuid}
     </select>
 
@@ -171,16 +171,16 @@
         SELECT a.uuid, a.attachment_id, a.original_filename, a.attachment_path, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE a.status = 0 AND a.deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE a.status = 0 AND a.deleted_time >= #{cutoff}
           AND a.uuid = #{userUuid}
         ORDER BY a.deleted_time DESC
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="countDeletedOnlyByUserUuid" resultType="int">
         SELECT COUNT(*)
         FROM attachment
-        WHERE status = 0 AND deleted_time >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+        WHERE status = 0 AND deleted_time >= #{cutoff}
           AND uuid = #{userUuid}
     </select>
 
@@ -188,7 +188,7 @@
         SELECT a.uuid, a.attachment_id, a.attachment_path, a.original_filename, a.access_key, a.create_time, a.deleted_time, a.status, u.username
         FROM attachment a
         JOIN user_information u ON a.uuid = u.uuid
-        WHERE a.status = 0 AND TIMESTAMPDIFF(HOUR, a.deleted_time, NOW()) > 6
+        WHERE a.status = 0 AND a.deleted_time &lt; #{cutoff}
         ORDER BY a.deleted_time ASC
     </select>
 

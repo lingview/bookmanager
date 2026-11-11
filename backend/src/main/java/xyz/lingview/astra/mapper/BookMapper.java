@@ -13,9 +13,10 @@ import java.util.List;
 @Mapper
 public interface BookMapper {
 
-    int countBooks(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId);
+    int countBooks(@Param("keywordPattern") String keywordPattern, @Param("categoryId") Integer categoryId);
 
-    List<BookViewDTO> selectBooks(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId,
+    List<BookViewDTO> selectBooks(@Param("keywordPattern") String keywordPattern,
+                                  @Param("categoryId") Integer categoryId,
                                   @Param("userUuid") String userUuid,
                                   @Param("offset") int offset, @Param("limit") int limit);
 

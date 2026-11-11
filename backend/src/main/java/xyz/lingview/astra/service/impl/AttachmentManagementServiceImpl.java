@@ -36,6 +36,10 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Value("${file.data-root:.}")
     private String dataRoot;
 
+    private LocalDateTime recentCutoff() {
+        return LocalDateTime.now().minusHours(6);
+    }
+
     @Override
     public Map<String, Object> getPage(int page, int size) {
         int offset = (page - 1) * size;
@@ -81,8 +85,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getPageWithRecentDeleted(int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectAllPageWithRecentDeleted(offset, size);
-        int total = attachmentManagementMapper.countAllWithRecentDeleted();
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectAllPageWithRecentDeleted(cutoff, offset, size);
+        int total = attachmentManagementMapper.countAllWithRecentDeleted(cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -102,8 +107,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getDeletedPageOnly(int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPage(offset, size);
-        int total = attachmentManagementMapper.countDeletedOnly();
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPage(cutoff, offset, size);
+        int total = attachmentManagementMapper.countDeletedOnly(cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -123,8 +129,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getPageByUuidWithRecentDeleted(String uuid, int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectPageByUuidWithRecentDeleted(uuid, offset, size);
-        int total = attachmentManagementMapper.countByUuidWithRecentDeleted(uuid);
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectPageByUuidWithRecentDeleted(uuid, cutoff, offset, size);
+        int total = attachmentManagementMapper.countByUuidWithRecentDeleted(uuid, cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -144,8 +151,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getDeletedPageByUuidOnly(String uuid, int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPageByUuid(uuid, offset, size);
-        int total = attachmentManagementMapper.countDeletedOnlyByUuid(uuid);
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPageByUuid(uuid, cutoff, offset, size);
+        int total = attachmentManagementMapper.countDeletedOnlyByUuid(uuid, cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -186,8 +194,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getPageByUserUuidWithDeleted(String userUuid, int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectPageByUserUuidWithDeleted(userUuid, offset, size);
-        int total = attachmentManagementMapper.countByUserUuidWithDeleted(userUuid);
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectPageByUserUuidWithDeleted(userUuid, cutoff, offset, size);
+        int total = attachmentManagementMapper.countByUserUuidWithDeleted(userUuid, cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -207,8 +216,9 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
     @Override
     public Map<String, Object> getDeletedPageByUserUuidOnly(String userUuid, int page, int size) {
         int offset = (page - 1) * size;
-        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPageByUserUuid(userUuid, offset, size);
-        int total = attachmentManagementMapper.countDeletedOnlyByUserUuid(userUuid);
+        LocalDateTime cutoff = recentCutoff();
+        List<AttachmentManagement> attachments = attachmentManagementMapper.selectDeletedOnlyPageByUserUuid(userUuid, cutoff, offset, size);
+        int total = attachmentManagementMapper.countDeletedOnlyByUserUuid(userUuid, cutoff);
 
         for (AttachmentManagement attachment : attachments) {
             String username = userInformationMapper.getUsernameByUuid(attachment.getUuid());
@@ -272,7 +282,7 @@ public class AttachmentManagementServiceImpl implements AttachmentManagementServ
 
     @Override
     public int cleanupExpiredDeletedAttachments() {
-        List<AttachmentManagement> expiredAttachments = attachmentManagementMapper.selectExpiredDeletedAttachments();
+        List<AttachmentManagement> expiredAttachments = attachmentManagementMapper.selectExpiredDeletedAttachments(recentCutoff());
 
         int cleanedCount = 0;
 

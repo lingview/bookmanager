@@ -17,14 +17,17 @@ public class DatabaseCreator {
     @Value("${spring.datasource.url}")
     private String dbUrl;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.username:}")
     private String username;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.password:}")
     private String password;
 
     @PostConstruct
     public void ensureDatabaseExists() {
+        if (!dbUrl.startsWith("jdbc:mysql:")) {
+            return;
+        }
         try {
             String dbName = dbUrl.substring(dbUrl.lastIndexOf("/") + 1).split("\\?")[0];
             String baseUrl = dbUrl.substring(0, dbUrl.lastIndexOf("/"));

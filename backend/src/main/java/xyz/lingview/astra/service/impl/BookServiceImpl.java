@@ -15,6 +15,7 @@ import xyz.lingview.astra.mapper.BookMapper;
 import xyz.lingview.astra.service.BookService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -33,9 +34,11 @@ public class BookServiceImpl implements BookService {
         int page = Math.max(pageNum, 1);
         int size = pageSize <= 0 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
         String trimmedKeyword = keyword == null ? null : keyword.trim();
+        String keywordPattern = (trimmedKeyword == null || trimmedKeyword.isEmpty())
+                ? null : "%" + trimmedKeyword + "%";
 
-        int total = bookMapper.countBooks(trimmedKeyword, categoryId);
-        List<BookViewDTO> data = bookMapper.selectBooks(trimmedKeyword, categoryId, userUuid,
+        int total = bookMapper.countBooks(keywordPattern, categoryId);
+        List<BookViewDTO> data = bookMapper.selectBooks(keywordPattern, categoryId, userUuid,
                 (page - 1) * size, size);
 
         PageResult<BookViewDTO> result = new PageResult<>();
@@ -76,6 +79,7 @@ public class BookServiceImpl implements BookService {
         book.setCategory_id(dto.getCategory_id());
         book.setDescription(trimToNull(dto.getDescription()));
         book.setCover_url(coverUrl);
+        book.setUpdate_time(LocalDateTime.now());
         bookMapper.updateBook(book);
     }
 
