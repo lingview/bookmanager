@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import xyz.lingview.astra.dto.request.LoginDTO;
 import xyz.lingview.astra.security.CsrfTokenService;
 import xyz.lingview.astra.service.CaptchaService;
-import xyz.lingview.astra.service.CurrentUserService;
 import xyz.lingview.astra.service.LoginService;
 import xyz.lingview.astra.util.UrlUtil;
 
@@ -31,9 +30,6 @@ public class PageController {
 
     @Autowired
     private CsrfTokenService csrfTokenService;
-
-    @Autowired
-    private CurrentUserService currentUserService;
 
     // 渲染登录页
     @GetMapping("/login")
@@ -78,12 +74,10 @@ public class PageController {
         return "redirect:/login";
     }
 
-    // 渲染首页
+    // 首页跳转图书列表
     @GetMapping("/")
-    public String home(HttpSession session, Model model) {
-        model.addAttribute("username", currentUserService.getCurrentUsername());
-        model.addAttribute("csrfToken", csrfTokenService.getToken(session));
-        return "home";
+    public String home() {
+        return "redirect:/books";
     }
 
     private String renderLoginFailure(HttpServletRequest request, Model model, String target,
