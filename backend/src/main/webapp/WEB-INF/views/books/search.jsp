@@ -13,6 +13,19 @@
     <button type="button" class="btn ghost" id="searchFilterToggle">筛选</button>
 </form>
 
+<c:url var="fulltextUrl" value="/books/fulltext">
+    <c:param name="q" value="${q}"/>
+</c:url>
+<c:url var="searchUrl" value="/books/search">
+    <c:if test="${not empty q}">
+        <c:param name="q" value="${q}"/>
+    </c:if>
+</c:url>
+<div class="search-scope">
+    <a class="scope-tab active" href="${searchUrl}">书名/作者</a>
+    <a class="scope-tab" href="${fulltextUrl}">全站正文</a>
+</div>
+
 <c:set var="hasAdvanced" value="${not empty category_id or not empty tag or not empty shelf}"/>
 <form class="shelf-filters search-open ${hasAdvanced ? 'advanced-open' : ''}" id="searchFilters"
       action="${ctx}/books/search" method="get" style="margin-top: 8px;">
@@ -53,10 +66,6 @@
             <option value="words" ${sort == 'words' ? 'selected' : ''}>字数</option>
         </select>
         <button type="submit" class="btn ghost">应用筛选</button>
-        <c:url var="fulltextUrl" value="/books/fulltext">
-            <c:param name="q" value="${q}"/>
-        </c:url>
-        <a class="btn ghost" href="${fulltextUrl}">搜正文</a>
     </div>
 </form>
 
@@ -110,26 +119,7 @@
 </c:choose>
 
 <c:if test="${pageResult.total_pages > 1}">
-    <div class="pagination">
-        <c:forEach begin="1" end="${pageResult.total_pages}" var="p">
-            <c:choose>
-                <c:when test="${p == pageResult.page}">
-                    <span class="page-current">${p}</span>
-                </c:when>
-                <c:otherwise>
-                    <c:url var="pageUrl" value="/books/search">
-                        <c:param name="page" value="${p}"/>
-                        <c:param name="q" value="${q}"/>
-                        <c:param name="category_id" value="${category_id}"/>
-                        <c:param name="tag" value="${tag}"/>
-                        <c:param name="sort" value="${sort}"/>
-                        <c:param name="shelf" value="${shelf}"/>
-                    </c:url>
-                    <a class="page-link" href="${pageUrl}">${p}</a>
-                </c:otherwise>
-            </c:choose>
-        </c:forEach>
-    </div>
+    <%@ include file="../common/pagination.jspf" %>
 </c:if>
 
 <script>

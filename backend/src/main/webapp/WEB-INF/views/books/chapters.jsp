@@ -62,18 +62,7 @@
         </div>
 
         <c:if test="${pageResult.total_pages > 1}">
-            <div class="pagination">
-                <c:forEach begin="1" end="${pageResult.total_pages}" var="p">
-                    <c:choose>
-                        <c:when test="${p == pageResult.page}">
-                            <span class="page-current">${p}</span>
-                        </c:when>
-                        <c:otherwise>
-                            <a class="page-link" href="${ctx}/books/${book.id}/chapters?page=${p}">${p}</a>
-                        </c:otherwise>
-                    </c:choose>
-                </c:forEach>
-            </div>
+            <%@ include file="../common/pagination.jspf" %>
         </c:if>
 
         <input type="hidden" id="csrfTokenHolder" value="<c:out value='${csrfToken}'/>">

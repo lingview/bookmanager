@@ -229,6 +229,12 @@
         }
 
         .page-current { background: #409eff; color: #fff; border-color: #409eff; }
+        .page-gap { color: #909399; align-self: center; padding: 0 2px; }
+        .page-link.disabled,
+        .page-link.disabled:hover { color: #c0c4cc; background: #fff; cursor: default; }
+        html.theme-dark .page-gap { color: #6b6c70; }
+        html.theme-dark .page-link.disabled,
+        html.theme-dark .page-link.disabled:hover { background: #232328; color: #5c5d61; }
 
         .form-row { margin-bottom: 16px; }
         .form-row .input, .form-row .select, .form-row .textarea { width: 100%; }
@@ -768,6 +774,30 @@
         }
 
         .search-input { flex: 1; min-width: 0; }
+
+        .search-scope {
+            display: flex;
+            gap: 18px;
+            margin: 0 2px 14px;
+            border-bottom: 1px solid #ebeef5;
+        }
+
+        .scope-tab {
+            padding: 8px 2px 9px;
+            margin-bottom: -1px;
+            color: #606266;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .scope-tab:hover { color: #409eff; text-decoration: none; }
+        .scope-tab.active { color: #409eff; border-color: #409eff; font-weight: 600; }
+
+        .fulltext-bar .input { flex: 1 1 320px; min-width: 0; }
+
+        html.theme-dark .search-scope { border-color: #2f2f35; }
+        html.theme-dark .scope-tab { color: #a8a9ad; }
+        html.theme-dark .scope-tab.active { color: #79bbff; border-color: #79bbff; }
 
         .search-results { display: flex; flex-direction: column; gap: 2px; }
 
@@ -1330,6 +1360,7 @@
             .search-bar { gap: 6px; }
             .search-bar .btn { padding: 8px 12px; }
             .search-input { font-size: 16px; }
+            .fulltext-bar .input { flex: 1 1 100%; font-size: 16px; }
             .search-item { padding: 10px 4px; }
 
             .filter-popover {

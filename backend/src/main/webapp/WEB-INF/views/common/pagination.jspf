@@ -1,0 +1,108 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:if test="${pageResult.total_pages > 1}">
+    <c:set var="pgTotal" value="${pageResult.total_pages}"/>
+    <c:set var="pgCurrent" value="${pageResult.page}"/>
+    <c:set var="pgPath" value="${requestScope['jakarta.servlet.forward.request_uri']}"/>
+    <c:choose>
+        <c:when test="${not empty pgPath}">
+            <c:set var="pgPath" value="${pgPath.substring(pageContext.request.contextPath.length())}"/>
+        </c:when>
+        <c:otherwise>
+            <c:set var="pgPath" value="${pageContext.request.requestURI}"/>
+        </c:otherwise>
+    </c:choose>
+    <c:set var="pgStart" value="${pgCurrent - 2 < 1 ? 1 : pgCurrent - 2}"/>
+    <c:set var="pgEnd" value="${pgStart + 4 > pgTotal ? pgTotal : pgStart + 4}"/>
+    <c:set var="pgStart" value="${pgEnd - 4 < 1 ? 1 : pgEnd - 4}"/>
+    <div class="pagination">
+        <c:choose>
+            <c:when test="${pgCurrent > 1}">
+                <c:url var="pgPrevUrl" value="${pgPath}">
+                    <c:forEach var="entry" items="${paramValues}">
+                        <c:if test="${entry.key != 'page'}">
+                            <c:forEach var="value" items="${entry.value}">
+                                <c:param name="${entry.key}" value="${value}"/>
+                            </c:forEach>
+                        </c:if>
+                    </c:forEach>
+                    <c:param name="page" value="${pgCurrent - 1}"/>
+                </c:url>
+                <a class="page-link" href="${pgPrevUrl}" rel="prev">上一页</a>
+            </c:when>
+            <c:otherwise>
+                <span class="page-link disabled">上一页</span>
+            </c:otherwise>
+        </c:choose>
+
+        <c:if test="${pgStart > 1}">
+            <c:url var="pgFirstUrl" value="${pgPath}">
+                <c:forEach var="entry" items="${paramValues}">
+                    <c:if test="${entry.key != 'page'}">
+                        <c:forEach var="value" items="${entry.value}">
+                            <c:param name="${entry.key}" value="${value}"/>
+                        </c:forEach>
+                    </c:if>
+                </c:forEach>
+                <c:param name="page" value="1"/>
+            </c:url>
+            <a class="page-link" href="${pgFirstUrl}">1</a>
+            <span class="page-gap">…</span>
+        </c:if>
+
+        <c:forEach begin="${pgStart}" end="${pgEnd}" var="p">
+            <c:choose>
+                <c:when test="${p == pgCurrent}">
+                    <span class="page-current">${p}</span>
+                </c:when>
+                <c:otherwise>
+                    <c:url var="pgUrl" value="${pgPath}">
+                        <c:forEach var="entry" items="${paramValues}">
+                            <c:if test="${entry.key != 'page'}">
+                                <c:forEach var="value" items="${entry.value}">
+                                    <c:param name="${entry.key}" value="${value}"/>
+                                </c:forEach>
+                            </c:if>
+                        </c:forEach>
+                        <c:param name="page" value="${p}"/>
+                    </c:url>
+                    <a class="page-link" href="${pgUrl}">${p}</a>
+                </c:otherwise>
+            </c:choose>
+        </c:forEach>
+
+        <c:if test="${pgEnd < pgTotal}">
+            <span class="page-gap">…</span>
+            <c:url var="pgLastUrl" value="${pgPath}">
+                <c:forEach var="entry" items="${paramValues}">
+                    <c:if test="${entry.key != 'page'}">
+                        <c:forEach var="value" items="${entry.value}">
+                            <c:param name="${entry.key}" value="${value}"/>
+                        </c:forEach>
+                    </c:if>
+                </c:forEach>
+                <c:param name="page" value="${pgTotal}"/>
+            </c:url>
+            <a class="page-link" href="${pgLastUrl}">${pgTotal}</a>
+        </c:if>
+
+        <c:choose>
+            <c:when test="${pgCurrent < pgTotal}">
+                <c:url var="pgNextUrl" value="${pgPath}">
+                    <c:forEach var="entry" items="${paramValues}">
+                        <c:if test="${entry.key != 'page'}">
+                            <c:forEach var="value" items="${entry.value}">
+                                <c:param name="${entry.key}" value="${value}"/>
+                            </c:forEach>
+                        </c:if>
+                    </c:forEach>
+                    <c:param name="page" value="${pgCurrent + 1}"/>
+                </c:url>
+                <a class="page-link" href="${pgNextUrl}" rel="next">下一页</a>
+            </c:when>
+            <c:otherwise>
+                <span class="page-link disabled">下一页</span>
+            </c:otherwise>
+        </c:choose>
+    </div>
+</c:if>

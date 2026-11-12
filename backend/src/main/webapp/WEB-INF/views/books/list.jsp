@@ -220,26 +220,7 @@
 </c:choose>
 
 <c:if test="${pageResult.total_pages > 1}">
-    <div class="pagination">
-        <c:forEach begin="1" end="${pageResult.total_pages}" var="p">
-            <c:choose>
-                <c:when test="${p == pageResult.page}">
-                    <span class="page-current">${p}</span>
-                </c:when>
-                <c:otherwise>
-                    <c:url var="pageUrl" value="/books">
-                        <c:param name="page" value="${p}"/>
-                        <c:param name="keyword" value="${keyword}"/>
-                        <c:param name="category_id" value="${category_id}"/>
-                        <c:param name="tag" value="${tag}"/>
-                        <c:param name="sort" value="${sort}"/>
-                        <c:param name="shelf" value="${shelf}"/>
-                    </c:url>
-                    <a class="page-link" href="${pageUrl}">${p}</a>
-                </c:otherwise>
-            </c:choose>
-        </c:forEach>
-    </div>
+    <%@ include file="../common/pagination.jspf" %>
 </c:if>
     </main>
 

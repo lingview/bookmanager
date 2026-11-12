@@ -5,12 +5,22 @@
 <c:set var="navActive" value="books"/>
 <%@ include file="../common/head.jspf" %>
 
-<form class="toolbar" action="${ctx}/books/fulltext" method="get">
+<form class="toolbar fulltext-bar" action="${ctx}/books/fulltext" method="get">
     <input class="input" type="text" name="q" placeholder="搜索所有书籍的章节正文" maxlength="50"
-           value="<c:out value='${q}'/>" style="flex: 1; min-width: 240px;">
+           value="<c:out value='${q}'/>">
     <button type="submit" class="btn">搜索</button>
     <a class="btn ghost" href="${ctx}/books">返回书架</a>
 </form>
+
+<c:url var="searchUrl" value="/books/search">
+    <c:if test="${not empty q}">
+        <c:param name="q" value="${q}"/>
+    </c:if>
+</c:url>
+<div class="search-scope">
+    <a class="scope-tab" href="${searchUrl}">书名/作者</a>
+    <a class="scope-tab active" href="${ctx}/books/fulltext">全站正文</a>
+</div>
 
 <c:choose>
     <c:when test="${empty q}">
