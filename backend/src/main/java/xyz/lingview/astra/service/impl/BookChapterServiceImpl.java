@@ -501,7 +501,7 @@ public class BookChapterServiceImpl implements BookChapterService {
         boolean foundHeading = false;
 
         for (String line : text.split("\r?\n", -1)) {
-            String trimmed = line.trim();
+            String trimmed = line.strip();
             if (isHeading(trimmed)) {
                 foundHeading = true;
                 if (currentTitle != null) {
