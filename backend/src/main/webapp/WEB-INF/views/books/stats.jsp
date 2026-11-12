@@ -59,11 +59,75 @@
     .data-table td.num, .data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
     .data-table tr:last-child td { border-bottom: none; }
 
+    html.theme-dark .stat-card { background: #232328; border-color: #2f2f35; }
+    html.theme-dark .stat-value,
+    html.theme-dark .chart-title { color: #e8e8ea; }
+    html.theme-dark .stat-label { color: #8a8b90; }
+    html.theme-dark .stat-sub { color: #6b6c70; }
+    html.theme-dark .data-table th,
+    html.theme-dark .data-table td { border-color: #2f2f35; }
+    html.theme-dark .data-table th { color: #8a8b90; }
+
+    .stats-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 3px;
+        background: #eef1f6;
+        border-radius: 8px;
+        margin-bottom: 18px;
+    }
+
+    .stats-scope {
+        border: none;
+        background: none;
+        padding: 6px 18px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #606266;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+    .stats-scope.active {
+        background: #fff;
+        color: #303133;
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    }
+
+    .stats-scope:focus-visible { outline: 2px solid #409eff; outline-offset: 1px; }
+
+    html.theme-dark .stats-switch { background: #2a2a30; }
+    html.theme-dark .stats-scope { color: #a8a9ad; }
+    html.theme-dark .stats-scope.active {
+        background: #3a3a42;
+        color: #e8e8ea;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    }
+
     @media (max-width: 900px) {
         .stats-grid { grid-template-columns: minmax(0, 1fr); }
     }
+
+    @media (max-width: 768px) {
+        .stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .stat-card { padding: 14px; }
+        .stat-value { font-size: 20px; }
+        .chart { height: 260px; }
+        .data-table th, .data-table td { padding: 8px; }
+        .stats-scope { padding: 6px 14px; }
+    }
 </style>
 
+<div class="stats-switch">
+    <button type="button" class="stats-scope active" id="scopeGlobal">全站</button>
+    <button type="button" class="stats-scope" id="scopeMine">我的</button>
+</div>
+
+<input type="hidden" id="csrfTokenHolder" value="<c:out value='${csrfToken}'/>">
+
+<div id="globalView">
 <div class="stats-cards">
     <div class="stat-card">
         <div class="stat-label">在架图书</div>
@@ -131,8 +195,78 @@
     </table>
     <p class="empty" id="categoryEmpty" style="display:none;">暂无分类数据</p>
 </section>
+</div>
 
-<script src="${ctx}/echarts.min.js"></script>
+<div id="personalView" hidden>
+    <div class="stats-cards">
+        <div class="stat-card">
+            <div class="stat-label">累计阅读</div>
+            <div class="stat-value" id="pTotal">-</div>
+            <div class="stat-sub" id="pTotalSub"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">本周阅读</div>
+            <div class="stat-value" id="pWeek">-</div>
+            <div class="stat-sub">从周一开始计算</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">阅读天数</div>
+            <div class="stat-value" id="pDays">-</div>
+            <div class="stat-sub" id="pStreak"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">读完的书</div>
+            <div class="stat-value" id="pFinished">-</div>
+            <div class="stat-sub" id="pYearFinished"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">年度目标</div>
+            <div class="stat-value" id="pGoal">-</div>
+            <div class="stat-sub" id="pGoalSub"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">设置年度目标</div>
+            <div class="toolbar" style="margin: 8px 0 0;">
+                <input class="input" type="number" id="goalInput" min="0" max="9999"
+                       style="width: 100px;" placeholder="本数">
+                <button class="btn small" id="goalSave" type="button">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <section class="card chart-card">
+            <div class="chart-title">阅读日历（最近一年）</div>
+            <div class="chart" id="heatmapChart" style="height: 240px;"></div>
+        </section>
+        <section class="card chart-card">
+            <div class="chart-title">我的分类偏好</div>
+            <div class="chart" id="personalCategoryChart"></div>
+        </section>
+    </div>
+
+    <section class="card" style="margin-bottom: 20px;">
+        <div class="chart-title">年度小结 <span class="muted" id="reportYear"></span></div>
+        <p class="muted" id="yearSummary"></p>
+    </section>
+
+    <section class="card">
+        <div class="chart-title">读完的书</div>
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>书名</th>
+                <th>作者</th>
+                <th>读完时间</th>
+            </tr>
+            </thead>
+            <tbody id="finishedList"></tbody>
+        </table>
+        <p class="empty" id="finishedEmpty" style="display: none;">还没有标记为"读过"的书</p>
+    </section>
+</div>
+
+<script src="${ctx}/echarts.min.js?v=5.5.1"></script>
 <script>
     (function () {
         var numberFormat = new Intl.NumberFormat('zh-CN');
@@ -161,12 +295,25 @@
             return echarts.init(document.getElementById(id), null, { renderer: 'canvas' });
         }
 
+        function chartColors() {
+            var dark = document.documentElement.classList.contains('theme-dark');
+            return {
+                dark: dark,
+                axis: dark ? '#3a3a41' : '#dcdfe6',
+                label: dark ? '#8a8b90' : '#909399',
+                labelStrong: dark ? '#c8c9cc' : '#606266',
+                split: dark ? '#2f2f35' : '#f2f3f5',
+                surface: dark ? '#232328' : '#fff',
+                empty: dark ? '#6b6c70' : '#c0c4cc'
+            };
+        }
+
         function emptyGraphic(text) {
             return [{
                 type: 'text',
                 left: 'center',
                 top: 'middle',
-                style: { text: text, fill: '#c0c4cc', fontSize: 13 }
+                style: { text: text, fill: chartColors().empty, fontSize: 13 }
             }];
         }
 
@@ -201,19 +348,20 @@
                 values.push(dailyMinutes(item));
             });
             var total = values.reduce(function (a, b) { return a + b; }, 0);
+            var c = chartColors();
             chart.setOption({
                 tooltip: { trigger: 'axis', valueFormatter: function (v) { return v + ' 分钟'; } },
                 grid: { left: 40, right: 16, top: 24, bottom: 28 },
                 xAxis: {
                     type: 'category',
                     data: dates,
-                    axisLine: { lineStyle: { color: '#dcdfe6' } },
-                    axisLabel: { color: '#909399' }
+                    axisLine: { lineStyle: { color: c.axis } },
+                    axisLabel: { color: c.label }
                 },
                 yAxis: {
                     type: 'value',
-                    axisLabel: { color: '#909399' },
-                    splitLine: { lineStyle: { color: '#f2f3f5' } }
+                    axisLabel: { color: c.label },
+                    splitLine: { lineStyle: { color: c.split } }
                 },
                 series: [{
                     type: 'line',
@@ -241,6 +389,7 @@
                 return;
             }
             var reversed = items.slice().reverse();
+            var c = chartColors();
             chart.setOption({
                 tooltip: {
                     trigger: 'axis',
@@ -250,14 +399,14 @@
                 grid: { left: 10, right: 70, top: 16, bottom: 16, containLabel: true },
                 xAxis: {
                     type: 'value',
-                    axisLabel: { color: '#909399', formatter: compact },
-                    splitLine: { lineStyle: { color: '#f2f3f5' } }
+                    axisLabel: { color: c.label, formatter: compact },
+                    splitLine: { lineStyle: { color: c.split } }
                 },
                 yAxis: {
                     type: 'category',
                     data: reversed.map(function (b) { return b.title; }),
-                    axisLine: { lineStyle: { color: '#dcdfe6' } },
-                    axisLabel: { color: '#606266', width: 110, overflow: 'truncate' }
+                    axisLine: { lineStyle: { color: c.axis } },
+                    axisLabel: { color: c.labelStrong, width: 110, overflow: 'truncate' }
                 },
                 series: [{
                     type: 'bar',
@@ -267,7 +416,7 @@
                     label: {
                         show: true,
                         position: 'right',
-                        color: '#909399',
+                        color: c.label,
                         fontSize: 11,
                         formatter: function (p) { return compact(p.value); }
                     }
@@ -281,18 +430,19 @@
                 chart.setOption({ graphic: emptyGraphic('暂无分类字数数据') });
                 return;
             }
+            var c = chartColors();
             chart.setOption({
                 tooltip: { trigger: 'item', formatter: function (p) { return p.name + '：' + compact(p.value) + ' 字（' + p.percent + '%）'; } },
-                legend: { bottom: 0, type: 'scroll', textStyle: { color: '#606266', fontSize: 12 } },
+                legend: { bottom: 0, type: 'scroll', textStyle: { color: c.labelStrong, fontSize: 12 } },
                 color: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#9b8afb', '#36cfc9', '#ff9e6d'],
                 series: [{
                     type: 'pie',
                     radius: ['38%', '62%'],
                     center: ['50%', '44%'],
                     avoidLabelOverlap: true,
-                    itemStyle: { borderColor: '#fff', borderWidth: 2 },
-                    label: { formatter: '{b}\n{d}%', color: '#606266', fontSize: 12 },
-                    data: items.map(function (c) { return { name: c.name, value: c.word_count }; })
+                    itemStyle: { borderColor: c.surface, borderWidth: 2 },
+                    label: { formatter: '{b}\n{d}%', color: c.labelStrong, fontSize: 12 },
+                    data: items.map(function (item) { return { name: item.name, value: item.word_count }; })
                 }]
             });
         }
@@ -304,17 +454,18 @@
                 chart.setOption({ graphic: emptyGraphic('暂无章节数据') });
                 return;
             }
+            var c = chartColors();
             chart.setOption({
                 tooltip: { trigger: 'item', formatter: '{b}：{c} 章（{d}%）' },
-                legend: { bottom: 0, textStyle: { color: '#606266', fontSize: 12 } },
+                legend: { bottom: 0, textStyle: { color: c.labelStrong, fontSize: 12 } },
                 color: ['#909399', '#409eff', '#67c23a', '#e6a23c'],
                 series: [{
                     type: 'pie',
                     radius: ['38%', '62%'],
                     center: ['50%', '44%'],
-                    itemStyle: { borderColor: '#fff', borderWidth: 2 },
-                    label: { formatter: '{b}\n{c} 章', color: '#606266', fontSize: 12 },
-                    data: items.map(function (b) { return { name: b.label, value: b.item_count }; })
+                    itemStyle: { borderColor: c.surface, borderWidth: 2 },
+                    label: { formatter: '{b}\n{c} 章', color: c.labelStrong, fontSize: 12 },
+                    data: items.map(function (item) { return { name: item.label, value: item.item_count }; })
                 }]
             });
         }
@@ -350,11 +501,204 @@
             bucket: makeChart('bucketChart')
         };
 
+        var lastData = null;
+        var lastPersonal = null;
+        var personalCharts = { heatmap: null, category: null };
+        var csrfToken = (document.getElementById('csrfTokenHolder') || {}).value || '';
+
+        document.addEventListener('app-theme-change', function () {
+            if (lastData) {
+                Object.keys(charts).forEach(function (key) { charts[key].clear(); });
+                renderTrend(charts.trend, lastData.daily_reading);
+                renderTopBooks(charts.topBooks, lastData.top_books);
+                renderCategory(charts.category, lastData.categories);
+                renderBuckets(charts.bucket, lastData.chapter_buckets);
+            }
+            if (lastPersonal && !document.getElementById('personalView').hidden) {
+                renderHeatmap(lastPersonal);
+                renderPersonalCategory(lastPersonal);
+            }
+        });
+
+        function formatDate(date) {
+            return date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' +
+                ('0' + date.getDate()).slice(-2);
+        }
+
+        function renderHeatmap(data) {
+            if (!personalCharts.heatmap) personalCharts.heatmap = makeChart('heatmapChart');
+            var c = chartColors();
+            var end = new Date();
+            var start = new Date();
+            start.setDate(end.getDate() - 364);
+            var values = (data.daily || []).map(function (item) {
+                return [item.stat_date, Math.round((Number(item.seconds) || 0) / 6) / 10];
+            });
+            var max = 10;
+            values.forEach(function (v) { if (v[1] > max) max = v[1]; });
+            var narrow = window.innerWidth <= 768;
+            personalCharts.heatmap.setOption({
+                tooltip: { formatter: function (p) { return p.value[0] + '：' + p.value[1] + ' 分钟'; } },
+                visualMap: {
+                    min: 0,
+                    max: max,
+                    show: false,
+                    inRange: { color: c.dark ? ['#2b2b31', '#409eff'] : ['#e8f3ff', '#409eff'] }
+                },
+                calendar: {
+                    range: [formatDate(start), formatDate(end)],
+                    cellSize: ['auto', narrow ? 12 : 14],
+                    top: narrow ? 12 : 16,
+                    left: narrow ? 32 : 42,
+                    right: narrow ? 8 : 16,
+                    bottom: narrow ? 24 : 30,
+                    splitLine: { show: false },
+                    itemStyle: { color: 'transparent', borderWidth: 1, borderColor: c.split },
+                    dayLabel: { color: c.label, fontSize: narrow ? 9 : 10, nameMap: 'ZH' },
+                    monthLabel: { color: c.label, fontSize: narrow ? 9 : 10, nameMap: 'ZH' },
+                    yearLabel: { show: false }
+                },
+                series: [{ type: 'heatmap', coordinateSystem: 'calendar', data: values }]
+            }, true);
+        }
+
+        function renderPersonalCategory(data) {
+            if (!personalCharts.category) personalCharts.category = makeChart('personalCategoryChart');
+            var c = chartColors();
+            var items = (data.categories || []).filter(function (x) { return x.seconds > 0; });
+            personalCharts.category.clear();
+            if (!items.length) {
+                personalCharts.category.setOption({ graphic: emptyGraphic('暂无阅读时长') });
+                return;
+            }
+            personalCharts.category.setOption({
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (p) { return p.name + '：' + p.value + ' 分钟（' + p.percent + '%）'; }
+                },
+                legend: { bottom: 0, type: 'scroll', textStyle: { color: c.labelStrong, fontSize: 12 } },
+                color: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#9b8afb', '#36cfc9', '#ff9e6d'],
+                series: [{
+                    type: 'pie',
+                    radius: ['38%', '62%'],
+                    center: ['50%', '44%'],
+                    itemStyle: { borderColor: c.surface, borderWidth: 2 },
+                    label: { formatter: '{b}\n{d}%', color: c.labelStrong, fontSize: 12 },
+                    data: items.map(function (x) {
+                        return { name: x.name, value: Math.max(1, Math.round(x.seconds / 60)) };
+                    })
+                }]
+            }, true);
+        }
+
+        function renderPersonal(data) {
+            document.getElementById('pTotal').textContent = data.total_text || '0 分钟';
+            document.getElementById('pTotalSub').textContent = '累计读完 ' + (data.finished_count || 0) + ' 本';
+            document.getElementById('pWeek').textContent = data.week_text || '0 分钟';
+            document.getElementById('pDays').textContent = (data.days_count || 0) + ' 天';
+            document.getElementById('pStreak').textContent = '连续阅读 ' + (data.streak_days || 0) + ' 天';
+            document.getElementById('pFinished').textContent = (data.finished_count || 0) + ' 本';
+            document.getElementById('pYearFinished').textContent = '今年读完 ' + (data.year_finished || 0) + ' 本';
+
+            var goal = data.year_goal || 0;
+            document.getElementById('pGoal').textContent = goal > 0
+                ? (data.year_finished || 0) + ' / ' + goal
+                : '未设置';
+            document.getElementById('pGoalSub').textContent = goal > 0
+                ? '完成 ' + Math.min(100, Math.round((data.year_finished || 0) / goal * 100)) + '%'
+                : '设置目标激励自己';
+            document.getElementById('goalInput').value = goal > 0 ? goal : '';
+
+            renderHeatmap(data);
+            renderPersonalCategory(data);
+
+            var finished = data.finished_books || [];
+            var tbody = document.getElementById('finishedList');
+            var empty = document.getElementById('finishedEmpty');
+            tbody.innerHTML = '';
+            empty.style.display = finished.length ? 'none' : '';
+            finished.forEach(function (item) {
+                var tr = document.createElement('tr');
+                [item.title, item.author || '-', item.finish_time || '-'].forEach(function (text) {
+                    var td = document.createElement('td');
+                    td.textContent = text;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            var topCategory = (data.categories && data.categories.length) ? data.categories[0].name : '暂无';
+            document.getElementById('reportYear').textContent = data.year + ' 年';
+            document.getElementById('yearSummary').textContent =
+                data.year + ' 年读完 ' + (data.year_finished || 0) + ' 本，累计阅读 ' + (data.total_text || '0 分钟') +
+                '，连续阅读 ' + (data.streak_days || 0) + ' 天；最爱分类：' + topCategory + '。';
+
+            lastPersonal = data;
+        }
+
+        function loadPersonal() {
+            fetch('${ctx}/books/stats/personal', {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            }).then(function (r) { return r.json(); }).then(function (body) {
+                if (body && body.data) renderPersonal(body.data);
+            }).catch(function () {
+            });
+        }
+
+        var globalBtn = document.getElementById('scopeGlobal');
+        var mineBtn = document.getElementById('scopeMine');
+
+        function showScope(mine) {
+            document.getElementById('globalView').hidden = mine;
+            document.getElementById('personalView').hidden = !mine;
+            globalBtn.classList.toggle('active', !mine);
+            mineBtn.classList.toggle('active', mine);
+            if (mine) {
+                loadPersonal();
+            } else {
+                Object.keys(charts).forEach(function (key) { charts[key].resize(); });
+            }
+        }
+
+        globalBtn.addEventListener('click', function () { showScope(false); });
+        mineBtn.addEventListener('click', function () { showScope(true); });
+
+        document.getElementById('goalSave').addEventListener('click', function () {
+            var target = parseInt(document.getElementById('goalInput').value, 10);
+            if (isNaN(target) || target < 0 || target > 9999) {
+                alert('请输入 0~9999 之间的目标本数');
+                return;
+            }
+            var year = (lastPersonal && lastPersonal.year) || new Date().getFullYear();
+            var params = new URLSearchParams();
+            params.append('csrfToken', csrfToken);
+            params.append('year', String(year));
+            params.append('target', String(target));
+            fetch('${ctx}/books/goal', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-Token': csrfToken },
+                body: params
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (res.code === 200) {
+                    loadPersonal();
+                } else {
+                    alert(res.message || '保存失败');
+                }
+            }).catch(function () {
+                alert('保存失败');
+            });
+        });
+
         var resizeTimer = null;
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
                 Object.keys(charts).forEach(function (key) { charts[key].resize(); });
+                Object.keys(personalCharts).forEach(function (key) {
+                    if (personalCharts[key]) personalCharts[key].resize();
+                });
             }, 120);
         });
 
@@ -371,6 +715,7 @@
             .then(function (body) {
                 if (!body) return;
                 var data = body.data || {};
+                lastData = data;
                 renderCards(data);
                 renderTrend(charts.trend, data.daily_reading);
                 renderTopBooks(charts.topBooks, data.top_books);

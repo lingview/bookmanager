@@ -9,9 +9,17 @@ import xyz.lingview.astra.domain.BookChapter;
 import xyz.lingview.astra.dto.request.BookChapterFormDTO;
 import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
+import xyz.lingview.astra.dto.response.ParsedChapterDTO;
 import xyz.lingview.astra.mapper.BookChapterMapper;
 import xyz.lingview.astra.service.BookChapterService;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -25,7 +33,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Slf4j
 @Service
@@ -156,36 +167,83 @@ public class BookChapterServiceImpl implements BookChapterService {
         if (file.getSize() > MAX_IMPORT_SIZE) {
             throw new RuntimeException("文件过大，最大支持 20MB");
         }
-        String filename = file.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase().endsWith(".txt")) {
-            throw new RuntimeException("仅支持 .txt 文本文件");
-        }
-
-        String text;
+        byte[] bytes;
         try {
-            text = decode(file.getBytes());
+            bytes = file.getBytes();
         } catch (IOException e) {
             throw new RuntimeException("读取文件失败");
+        }
+        return importParsedChapters(bookId, parseChapters(file.getOriginalFilename(), bytes));
+    }
+
+    @Override
+    public List<ParsedChapterDTO> parseChapters(String filename, byte[] bytes) {
+        if (filename == null) {
+            throw new RuntimeException("请选择要导入的文件");
+        }
+        if (bytes == null || bytes.length == 0) {
+            throw new RuntimeException("文件内容为空");
+        }
+        if (bytes.length > MAX_IMPORT_SIZE) {
+            throw new RuntimeException("文件过大，最大支持 20MB");
+        }
+        String lowerName = filename.toLowerCase();
+        if (!lowerName.endsWith(".txt") && !lowerName.endsWith(".epub")) {
+            throw new RuntimeException("仅支持 .txt 或 .epub 文件");
         }
 
         List<String> titles = new ArrayList<>();
         List<String> bodies = new ArrayList<>();
-        splitChapters(text, fallbackTitle(filename), titles, bodies);
+        if (lowerName.endsWith(".epub")) {
+            parseEpub(bytes, titles, bodies);
+        } else {
+            splitChapters(decode(bytes), fallbackTitle(filename), titles, bodies);
+        }
         if (titles.size() > MAX_IMPORT_CHAPTERS) {
             throw new RuntimeException("单次最多导入 " + MAX_IMPORT_CHAPTERS + " 章");
         }
 
-        int sort = Optional.ofNullable(chapterMapper.selectMaxSortOrder(bookId)).orElse(0);
-        int imported = 0;
+        List<ParsedChapterDTO> chapters = new ArrayList<>(titles.size());
         for (int i = 0; i < titles.size(); i++) {
             String body = bodies.get(i).trim();
             if (body.isEmpty()) {
                 continue;
             }
+            chapters.add(new ParsedChapterDTO(titles.get(i), body));
+        }
+        if (chapters.isEmpty()) {
+            throw new RuntimeException("未解析到有效章节内容");
+        }
+        return chapters;
+    }
+
+    @Override
+    @Transactional
+    public int importParsedChapters(Integer bookId, List<ParsedChapterDTO> chapters) {
+        if (chapters == null || chapters.isEmpty()) {
+            throw new RuntimeException("未解析到有效章节内容");
+        }
+        if (chapters.size() > MAX_IMPORT_CHAPTERS) {
+            throw new RuntimeException("单次最多导入 " + MAX_IMPORT_CHAPTERS + " 章");
+        }
+        int sort = Optional.ofNullable(chapterMapper.selectMaxSortOrder(bookId)).orElse(0);
+        int imported = 0;
+        for (ParsedChapterDTO parsed : chapters) {
+            String body = parsed.getContent() == null ? "" : parsed.getContent().trim();
+            if (body.isEmpty()) {
+                continue;
+            }
+            String title = parsed.getTitle() == null ? "" : parsed.getTitle().trim();
+            if (title.isEmpty()) {
+                title = FALLBACK_TITLE;
+            }
+            if (title.length() > 255) {
+                title = title.substring(0, 255);
+            }
             sort += SORT_STEP;
             BookChapter chapter = new BookChapter();
             chapter.setBook_id(bookId);
-            chapter.setTitle(titles.get(i));
+            chapter.setTitle(title);
             chapter.setContent(body);
             chapter.setWord_count(wordCount(body));
             chapter.setSort_order(sort);
@@ -196,6 +254,244 @@ public class BookChapterServiceImpl implements BookChapterService {
             throw new RuntimeException("未解析到有效章节内容");
         }
         return imported;
+    }
+
+    private void parseEpub(byte[] bytes, List<String> titles, List<String> bodies) {
+        Map<String, byte[]> entries = readZipEntries(bytes);
+        byte[] containerBytes = entries.get("META-INF/container.xml");
+        if (containerBytes == null) {
+            throw new RuntimeException("EPUB 缺少 container.xml，文件可能已损坏");
+        }
+        Document container = parseXml(containerBytes);
+        NodeList rootfiles = elements(container, "rootfile");
+        String opfPath = null;
+        for (int i = 0; i < rootfiles.getLength(); i++) {
+            String path = ((Element) rootfiles.item(i)).getAttribute("full-path");
+            if (path != null && !path.isEmpty()) {
+                opfPath = path;
+                break;
+            }
+        }
+        if (opfPath == null) {
+            throw new RuntimeException("EPUB 缺少目录描述文件");
+        }
+        byte[] opfBytes = entries.get(opfPath);
+        if (opfBytes == null) {
+            for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(opfPath)) {
+                    opfBytes = entry.getValue();
+                    break;
+                }
+            }
+        }
+        if (opfBytes == null) {
+            throw new RuntimeException("EPUB 目录描述文件缺失");
+        }
+
+        Document opf = parseXml(opfBytes);
+        String opfDir = opfPath.contains("/") ? opfPath.substring(0, opfPath.lastIndexOf('/')) : "";
+        Map<String, String> manifest = new HashMap<>();
+        NodeList items = elements(opf, "item");
+        for (int i = 0; i < items.getLength(); i++) {
+            Element item = (Element) items.item(i);
+            manifest.put(item.getAttribute("id"), item.getAttribute("href"));
+        }
+
+        List<String> spinePaths = new ArrayList<>();
+        NodeList itemrefs = elements(opf, "itemref");
+        for (int i = 0; i < itemrefs.getLength(); i++) {
+            String idref = ((Element) itemrefs.item(i)).getAttribute("idref");
+            String href = manifest.get(idref);
+            if (href != null && !href.isEmpty()) {
+                spinePaths.add(resolvePath(opfDir, href));
+            }
+        }
+        if (spinePaths.isEmpty()) {
+            for (String href : manifest.values()) {
+                String lower = href.toLowerCase();
+                if (lower.endsWith(".xhtml") || lower.endsWith(".html") || lower.endsWith(".htm")) {
+                    spinePaths.add(resolvePath(opfDir, href));
+                }
+            }
+        }
+
+        int index = 0;
+        for (String path : spinePaths) {
+            byte[] data = entries.get(path);
+            if (data == null) {
+                continue;
+            }
+            String html = decode(data);
+            String text = htmlToText(html);
+            if (text.isEmpty()) {
+                continue;
+            }
+            index++;
+            String title = extractHtmlTitle(html);
+            if (title == null || title.isEmpty()) {
+                title = "第 " + index + " 节";
+            }
+            if (title.length() > 100) {
+                title = title.substring(0, 100);
+            }
+            titles.add(title);
+            bodies.add(text);
+            if (titles.size() >= MAX_IMPORT_CHAPTERS) {
+                break;
+            }
+        }
+        if (titles.isEmpty()) {
+            throw new RuntimeException("EPUB 未解析到有效章节内容");
+        }
+    }
+
+    private Map<String, byte[]> readZipEntries(byte[] bytes) {
+        Map<String, byte[]> entries = new HashMap<>();
+        long total = 0;
+        byte[] buffer = new byte[8192];
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(bytes))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                long entrySize = 0;
+                int read;
+                while ((read = zis.read(buffer)) != -1) {
+                    entrySize += read;
+                    total += read;
+                    if (entrySize > MAX_IMPORT_SIZE || total > MAX_IMPORT_SIZE * 3L) {
+                        throw new RuntimeException("EPUB 解压后内容过大");
+                    }
+                    out.write(buffer, 0, read);
+                }
+                entries.put(entry.getName().replace('\\', '/'), out.toByteArray());
+                if (entries.size() > 5000) {
+                    throw new RuntimeException("EPUB 文件条目过多");
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("读取 EPUB 失败");
+        }
+        return entries;
+    }
+
+    private Document parseXml(byte[] bytes) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            factory.setNamespaceAware(true);
+            return factory.newDocumentBuilder().parse(new ByteArrayInputStream(bytes));
+        } catch (Exception e) {
+            log.warn("解析 EPUB XML 失败", e);
+            throw new RuntimeException("解析 EPUB 文件失败");
+        }
+    }
+
+    private NodeList elements(Document document, String tagName) {
+        NodeList nodes = document.getElementsByTagNameNS("*", tagName);
+        if (nodes.getLength() == 0) {
+            nodes = document.getElementsByTagName(tagName);
+        }
+        return nodes;
+    }
+
+    private String resolvePath(String baseDir, String href) {
+        String path = href;
+        try {
+            path = java.net.URLDecoder.decode(href, StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+        }
+        int hash = path.indexOf('#');
+        if (hash >= 0) {
+            path = path.substring(0, hash);
+        }
+        int query = path.indexOf('?');
+        if (query >= 0) {
+            path = path.substring(0, query);
+        }
+        String combined = baseDir.isEmpty() ? path : baseDir + "/" + path;
+        java.util.LinkedList<String> parts = new java.util.LinkedList<>();
+        for (String part : combined.split("/")) {
+            if (part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                if (!parts.isEmpty()) {
+                    parts.removeLast();
+                }
+            } else {
+                parts.add(part);
+            }
+        }
+        return String.join("/", parts);
+    }
+
+    private String htmlToText(String html) {
+        String cleaned = html
+                .replaceAll("(?is)<head.*?</head>", " ")
+                .replaceAll("(?is)<(script|style)[^>]*>.*?</\\1>", " ")
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</(p|div|li|h[1-6]|tr|section|article|blockquote)>", "\n")
+                .replaceAll("(?s)<[^>]+>", " ");
+        cleaned = decodeEntities(cleaned)
+                .replace('\u00a0', ' ')
+                .replaceAll("[ \\t\\x0B\\f\\r]+", " ")
+                .replaceAll("\\n\\s*\\n+", "\n\n");
+        return cleaned.trim();
+    }
+
+    private String extractHtmlTitle(String html) {
+        Matcher titleMatcher = Pattern.compile("(?is)<title[^>]*>(.*?)</title>").matcher(html);
+        if (titleMatcher.find()) {
+            String title = decodeEntities(titleMatcher.group(1).replaceAll("<[^>]+>", " ")).trim();
+            if (!title.isEmpty()) {
+                return title;
+            }
+        }
+        Matcher headingMatcher = Pattern.compile("(?is)<h[1-3][^>]*>(.*?)</h[1-3]>").matcher(html);
+        if (headingMatcher.find()) {
+            String title = decodeEntities(headingMatcher.group(1).replaceAll("<[^>]+>", " "))
+                    .replaceAll("\\s+", " ").trim();
+            if (!title.isEmpty()) {
+                return title;
+            }
+        }
+        return null;
+    }
+
+    private String decodeEntities(String text) {
+        String result = text
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&apos;", "'");
+        result = replaceNumericEntities(result, Pattern.compile("&#x([0-9a-fA-F]+);"), 16);
+        return replaceNumericEntities(result, Pattern.compile("&#(\\d+);"), 10);
+    }
+
+    private String replaceNumericEntities(String text, Pattern pattern, int radix) {
+        Matcher matcher = pattern.matcher(text);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String replacement;
+            try {
+                replacement = new String(Character.toChars(Integer.parseInt(matcher.group(1), radix)));
+            } catch (IllegalArgumentException e) {
+                replacement = "";
+            }
+            matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
     }
 
     private void splitChapters(String text, String fallbackTitle, List<String> titles, List<String> bodies) {

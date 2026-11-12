@@ -10,4 +10,6 @@ application-setup.properties
 qodana.yaml
 .random_salt
 backend/data/
+backend/tomcat-work/
 dist/
+backend/temp/

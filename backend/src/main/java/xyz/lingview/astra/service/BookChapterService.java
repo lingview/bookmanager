@@ -5,6 +5,7 @@ import xyz.lingview.astra.domain.BookChapter;
 import xyz.lingview.astra.dto.request.BookChapterFormDTO;
 import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
+import xyz.lingview.astra.dto.response.ParsedChapterDTO;
 
 import java.util.List;
 
@@ -25,4 +26,8 @@ public interface BookChapterService {
     void reorder(Integer bookId, List<Integer> ids);
 
     int importChapters(Integer bookId, MultipartFile file);
+
+    List<ParsedChapterDTO> parseChapters(String filename, byte[] bytes);
+
+    int importParsedChapters(Integer bookId, List<ParsedChapterDTO> chapters);
 }

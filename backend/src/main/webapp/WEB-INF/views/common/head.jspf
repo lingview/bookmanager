@@ -5,469 +5,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><c:out value="${pageTitle}"/></title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-            Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f5f7fa;
-            color: #303133;
-            font-size: 14px;
-        }
-
-        a { color: #409eff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-
-        .nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 0 24px;
-            height: 56px;
-            background: #fff;
-            border-bottom: 1px solid #ebeef5;
-        }
-
-        .nav-group { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-        .brand { font-weight: 600; font-size: 16px; color: #303133; }
-        .nav-link { color: #606266; }
-        .nav-link.active { color: #409eff; }
-        .user { color: #909399; }
-        .inline { display: inline; }
-
-        .link-btn {
-            background: none;
-            border: none;
-            color: #909399;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0;
-            font-family: inherit;
-        }
-
-        .link-btn:hover { color: #409eff; }
-
-        .page { padding: 24px; }
-
-        .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
-        .flash.ok { background: #f0f9eb; color: #67c23a; }
-        .flash.err { background: #fef0f0; color: #f56c6c; }
-
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .toolbar .grow { flex: 1; }
-
-        .input, .select, .textarea {
-            padding: 8px 10px;
-            border: 1px solid #dcdfe6;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #303133;
-            font-family: inherit;
-            outline: none;
-            background: #fff;
-        }
-
-        .input:focus, .select:focus, .textarea:focus { border-color: #409eff; }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 6px;
-            background: #409eff;
-            color: #fff;
-            border: 1px solid #409eff;
-            font-size: 14px;
-            cursor: pointer;
-            line-height: 1.2;
-            font-family: inherit;
-        }
-
-        .btn:hover { background: #337ecc; text-decoration: none; }
-        .btn.ghost { background: #fff; color: #606266; border-color: #dcdfe6; }
-        .btn.ghost:hover { color: #409eff; border-color: #409eff; }
-        .btn.danger { background: #fff; color: #f56c6c; border-color: #fbc4c4; }
-        .btn.danger:hover { background: #fef0f0; }
-        .btn.small { padding: 6px 12px; font-size: 13px; }
-
-        .card {
-            background: #fff;
-            border: 1px solid #ebeef5;
-            border-radius: 10px;
-            padding: 20px;
-        }
-
-        .shelf { display: flex; flex-wrap: wrap; }
-
-        .shelf-slot {
-            position: relative;
-            flex: 0 0 156px;
-            min-width: 0;
-            height: 282px;
-            margin-bottom: 26px;
-            padding: 0 10px;
-        }
-
-        .book-cover {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            height: 190px;
-        }
-
-        .thumb {
-            position: relative;
-            width: 120px;
-            height: 168px;
-            transition: transform .15s ease;
-        }
-
-        .thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            border-radius: 2px 4px 4px 2px;
-            box-shadow: 0 6px 14px rgba(0, 0, 0, .16);
-        }
-
-        .thumb::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 5px;
-            border-radius: 2px 0 0 2px;
-            background: linear-gradient(90deg, rgba(0, 0, 0, .30), rgba(255, 255, 255, 0));
-        }
-
-        .thumb-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f5f7fa;
-            border: 1px dashed #dcdfe6;
-            border-radius: 2px 4px 4px 2px;
-            color: #c0c4cc;
-            font-size: 12px;
-        }
-
-        .thumb-empty::before { content: none; }
-
-        .shelf-slot:hover .thumb { transform: translateY(-3px); }
-
-        .shelf-plank {
-            position: absolute;
-            left: 10px;
-            right: 10px;
-            top: 190px;
-            height: 8px;
-            border-radius: 2px;
-            background: linear-gradient(#e8d7b4, #c9ab7f);
-            box-shadow: 0 3px 6px rgba(90, 66, 38, .18);
-        }
-
-        .book-label { padding-top: 16px; }
-
-        .book-title {
-            display: block;
-            color: #303133;
-            font-weight: 600;
-            font-size: 13px;
-            line-height: 1.4;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .book-meta {
-            margin-top: 4px;
-            color: #909399;
-            font-size: 12px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .book-actions { margin-top: 6px; }
-
-        .chip {
-            display: inline-block;
-            max-width: 100%;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: #ecf5ff;
-            color: #409eff;
-            font-size: 12px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .cover {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            aspect-ratio: 3 / 4;
-            background: #f5f7fa;
-            color: #c0c4cc;
-            font-size: 13px;
-        }
-
-        .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .empty { color: #909399; padding: 40px 0; text-align: center; }
-
-        .pagination { display: flex; gap: 6px; margin-top: 24px; flex-wrap: wrap; }
-        .page-link, .page-current {
-            padding: 6px 12px;
-            border: 1px solid #dcdfe6;
-            border-radius: 6px;
-            color: #606266;
-        }
-
-        .page-current { background: #409eff; color: #fff; border-color: #409eff; }
-
-        .form-row { margin-bottom: 16px; }
-        .form-row .input, .form-row .select, .form-row .textarea { width: 100%; }
-        .form-label { display: block; margin-bottom: 6px; color: #606266; }
-        .form-hint { color: #909399; font-size: 12px; margin-top: 4px; }
-        .field-error { color: #f56c6c; font-size: 12px; margin-top: 4px; }
-        .form-error { color: #f56c6c; margin-bottom: 16px; }
-        .form-actions { display: flex; gap: 10px; margin-top: 24px; }
-        .cover-preview { width: 96px; height: 128px; object-fit: cover; border-radius: 6px; border: 1px solid #ebeef5; }
-
-        .cover-search { display: flex; gap: 10px; align-items: center; }
-        .cover-search .input { flex: 1; min-width: 0; }
-
-        .picker-mask {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            background: rgba(0, 0, 0, .45);
-        }
-
-        .picker-mask[hidden] { display: none; }
-
-        .picker {
-            display: flex;
-            flex-direction: column;
-            width: min(860px, 100%);
-            max-height: 82vh;
-            overflow: hidden;
-            background: #fff;
-            border-radius: 10px;
-        }
-
-        .picker-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 20px;
-            border-bottom: 1px solid #ebeef5;
-            font-weight: 600;
-        }
-
-        .picker-body {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 12px;
-            padding: 16px 20px;
-            overflow: auto;
-        }
-
-        .picker-body img {
-            display: block;
-            width: 100%;
-            aspect-ratio: 3 / 4;
-            object-fit: cover;
-            background: #f5f7fa;
-            border: 1px solid #ebeef5;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .picker-body img:hover {
-            border-color: #409eff;
-            box-shadow: 0 0 0 2px rgba(64, 158, 255, .2);
-        }
-
-        .picker-empty {
-            grid-column: 1 / -1;
-            padding: 30px 0;
-            text-align: center;
-            color: #909399;
-        }
-
-        .picker-foot {
-            padding: 10px 20px;
-            border-top: 1px solid #ebeef5;
-            color: #909399;
-            font-size: 12px;
-        }
-
-        table.table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-            border: 1px solid #ebeef5;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f2f6fc; }
-        .table th { background: #fafafa; color: #606266; font-weight: 500; }
-        .table tr:last-child td { border-bottom: none; }
-        .table .actions { display: flex; gap: 8px; }
-
-        .reader {
-            display: grid;
-            grid-template-columns: 240px minmax(0, 1fr) auto;
-            gap: 20px;
-            align-items: start;
-        }
-
-        .reader-rail {
-            position: sticky;
-            top: 72px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 64px;
-        }
-
-        .rail-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            padding: 6px;
-            background: #fff;
-            border: 1px solid #ebeef5;
-            border-radius: 10px;
-        }
-
-        .rail-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            width: 100%;
-            padding: 8px 2px;
-            border: none;
-            border-radius: 6px;
-            background: none;
-            color: #606266;
-            font-size: 12px;
-            font-family: inherit;
-            line-height: 1.2;
-            cursor: pointer;
-        }
-
-        .rail-btn:hover {
-            background: #ecf5ff;
-            color: #409eff;
-            text-decoration: none;
-        }
-
-        .rail-btn:disabled {
-            color: #c0c4cc;
-            cursor: default;
-        }
-
-        .rail-btn:disabled:hover {
-            background: none;
-            color: #c0c4cc;
-        }
-
-        .rail-icon { font-size: 15px; line-height: 1; }
-        .rail-text { white-space: nowrap; }
-
-        .toc {
-            background: #fff;
-            border: 1px solid #ebeef5;
-            border-radius: 10px;
-            padding: 12px;
-            max-height: calc(100vh - 140px);
-            overflow: auto;
-            position: sticky;
-            top: 72px;
-        }
-
-        .toc-title { font-weight: 600; margin-bottom: 8px; padding: 0 8px; }
-        .toc a { display: block; padding: 6px 8px; border-radius: 6px; color: #606266; font-size: 13px; }
-        .toc a:hover { background: #f5f7fa; text-decoration: none; }
-        .toc a.current { background: #ecf5ff; color: #409eff; }
-
-        .chapter { background: #fff; border: 1px solid #ebeef5; border-radius: 10px; padding: 32px; }
-        .chapter-title { font-size: 20px; margin-bottom: 20px; }
-        .chapter-content {
-            white-space: pre-wrap;
-            word-break: break-word;
-            line-height: 1.9;
-            font-size: 15px;
-        }
-
-        .drag-row { cursor: move; }
-        .drag-row.dragging { opacity: .4; }
-        .drag-handle { color: #c0c4cc; margin-right: 8px; }
-
-        .detail-cover { border-radius: 8px; overflow: hidden; }
-        .text-block { white-space: pre-wrap; line-height: 1.8; color: #606266; margin-top: 16px; }
-        .stack { display: flex; flex-direction: column; gap: 20px; }
-        .actions-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-        .toc-card { border: none; padding: 0; }
-        .muted { color: #909399; font-size: 13px; }
-        .section-title { font-weight: 600; margin-bottom: 12px; }
-
-        @media (max-width: 900px) {
-            .reader { grid-template-columns: 1fr; }
-
-            .reader-rail {
-                position: static;
-                flex-direction: row;
-                width: auto;
-                gap: 10px;
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('app-theme') === 'dark') {
+                    document.documentElement.classList.add('theme-dark');
+                }
+            } catch (e) {
             }
-
-            .rail-group { flex-direction: row; }
-
-            .rail-btn {
-                flex-direction: row;
-                gap: 6px;
-                padding: 8px 12px;
-            }
-        }
-
-        @media (max-width: 860px) {
-            .reader { grid-template-columns: 1fr; }
-            .toc { position: static; max-height: none; }
-            .chapter { padding: 20px; }
-        }
-    </style>
+        })();
+    </script>
+    <link rel="stylesheet" href="${ctx}/assets/app.css">
 </head>
 <body>
 <div class="nav">
     <div class="nav-group">
         <a class="brand" href="${ctx}/">Astra</a>
         <a class="nav-link ${navActive == 'books' ? 'active' : ''}" href="${ctx}/books">图书</a>
+        <a class="nav-link ${navActive == 'reading' ? 'active' : ''}" href="${ctx}/reading">阅读</a>
         <a class="nav-link ${navActive == 'stats' ? 'active' : ''}" href="${ctx}/books/stats">统计</a>
         <c:if test="${canManage}">
             <a class="nav-link ${navActive == 'categories' ? 'active' : ''}" href="${ctx}/books/categories">分类</a>
         </c:if>
+        <c:if test="${isAdmin}">
+            <a class="nav-link ${navActive == 'users' ? 'active' : ''}" href="${ctx}/admin/users">用户</a>
+        </c:if>
+        <a class="nav-link" href="${ctx}/books/random">随便看看</a>
     </div>
     <div class="nav-group">
+        <button type="button" class="link-btn theme-toggle" id="appThemeToggle" title="切换到夜间模式"
+                aria-label="切换到夜间模式">
+            <span id="appThemeIcon">☾</span>
+        </button>
         <span class="user"><c:out value="${sessionScope.username}"/></span>
         <form action="${ctx}/logout" method="post" class="inline">
             <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
@@ -475,6 +44,73 @@
         </form>
     </div>
 </div>
+<script>
+    (function () {
+        var root = document.documentElement;
+        var button = document.getElementById('appThemeToggle');
+        var icon = document.getElementById('appThemeIcon');
+        if (!button || !icon) return;
+
+        function isDark() {
+            return root.classList.contains('theme-dark');
+        }
+
+        function paint() {
+            icon.textContent = isDark() ? '☀' : '☾';
+            var title = isDark() ? '切换到日间模式' : '切换到夜间模式';
+            button.title = title;
+            button.setAttribute('aria-label', title);
+        }
+
+        function set(theme) {
+            if (theme === 'dark') {
+                root.classList.add('theme-dark');
+            } else {
+                root.classList.remove('theme-dark');
+            }
+            try {
+                localStorage.setItem('app-theme', theme);
+            } catch (e) {
+            }
+            paint();
+            document.dispatchEvent(new CustomEvent('app-theme-change', { detail: { theme: theme } }));
+        }
+
+        function toggle() {
+            var next = isDark() ? 'light' : 'dark';
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!document.startViewTransition || reduced) {
+                set(next);
+                return;
+            }
+            var rect = button.getBoundingClientRect();
+            var x = rect.left + rect.width / 2;
+            var y = rect.top + rect.height / 2;
+            var radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+            root.style.setProperty('--ripple-x', x + 'px');
+            root.style.setProperty('--ripple-y', y + 'px');
+            root.style.setProperty('--ripple-r', radius + 'px');
+            document.startViewTransition(function () { set(next); });
+        }
+
+        window.AppTheme = {
+            isDark: isDark,
+            set: function (theme) {
+                if (theme === 'dark') {
+                    if (!isDark()) set('dark');
+                } else if (isDark()) {
+                    set('light');
+                } else {
+                    paint();
+                }
+            },
+            toggle: toggle
+        };
+
+        button.addEventListener('click', toggle);
+        paint();
+    })();
+</script>
 <main class="page">
 <c:if test="${not empty flashMessage}">
     <div class="flash ok"><c:out value="${flashMessage}"/></div>

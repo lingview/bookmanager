@@ -21,4 +21,8 @@ public interface UserRoleMapper {
 
     // 检查用户是否拥有某个角色
     int countUserRole(@Param("userId") Integer userId, @Param("roleId") Integer roleId);
+
+    java.util.List<xyz.lingview.astra.domain.Role> selectAllRoles();
+
+    int deleteUserRolesByUserId(@Param("userId") Integer userId);
 }

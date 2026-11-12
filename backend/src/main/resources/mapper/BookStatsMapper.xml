@@ -110,4 +110,75 @@
         VALUES (#{userUuid}, #{bookId}, #{chapterId}, #{eventTime})
     </insert>
 
+    <select id="sumPersonalReadingSeconds" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(t.seconds), 0)
+        FROM book_reading_time t
+        JOIN book b ON b.id = t.book_id AND b.status = 1
+        WHERE t.user_uuid = #{userUuid}
+        <if test="fromDate != null">
+            AND t.stat_date &gt;= #{fromDate}
+        </if>
+    </select>
+
+    <select id="selectPersonalReadingDates" resultType="java.lang.String">
+        SELECT DISTINCT t.stat_date
+        FROM book_reading_time t
+        JOIN book b ON b.id = t.book_id AND b.status = 1
+        WHERE t.user_uuid = #{userUuid} AND t.stat_date &gt;= #{fromDate}
+        ORDER BY t.stat_date DESC
+    </select>
+
+    <select id="countPersonalReadingBooks" resultType="int">
+        SELECT COUNT(DISTINCT p.book_id)
+        FROM book_reading_progress p
+        JOIN book b ON b.id = p.book_id AND b.status = 1
+        WHERE p.user_uuid = #{userUuid}
+    </select>
+
+    <select id="selectPersonalDaily" resultType="xyz.lingview.astra.dto.response.DailyReadingDTO">
+        SELECT t.stat_date AS stat_date, SUM(t.seconds) AS seconds
+        FROM book_reading_time t
+        JOIN book b ON b.id = t.book_id AND b.status = 1
+        WHERE t.user_uuid = #{userUuid} AND t.stat_date &gt;= #{fromDate}
+        GROUP BY t.stat_date
+        ORDER BY t.stat_date
+    </select>
+
+    <select id="selectFinishedBooks" resultType="xyz.lingview.astra.dto.response.FinishedBookDTO">
+        SELECT b.id AS id, b.title AS title, b.author AS author, s.update_time AS finish_time
+        FROM book_user_shelf s
+        JOIN book b ON b.id = s.book_id AND b.status = 1
+        WHERE s.user_uuid = #{userUuid} AND s.status = 'finished'
+        ORDER BY s.update_time DESC, b.id DESC
+    </select>
+
+    <select id="selectPersonalCategorySeconds" resultType="xyz.lingview.astra.dto.response.PersonalCategoryDTO">
+        SELECT COALESCE(c.name, '未分类') AS name, SUM(t.seconds) AS seconds
+        FROM book_reading_time t
+        JOIN book b ON b.id = t.book_id AND b.status = 1
+        LEFT JOIN book_category c ON c.id = b.category_id
+        WHERE t.user_uuid = #{userUuid}
+        GROUP BY c.id, c.name
+        ORDER BY seconds DESC
+    </select>
+
+    <select id="selectGoalTarget" resultType="java.lang.Integer">
+        SELECT target_count FROM book_reading_goal
+        WHERE user_uuid = #{userUuid} AND target_year = #{year}
+    </select>
+
+    <insert id="insertGoal">
+        INSERT INTO book_reading_goal (user_uuid, target_year, target_count, update_time)
+        VALUES (#{userUuid}, #{year}, #{target}, #{now})
+    </insert>
+
+    <update id="updateGoal">
+        UPDATE book_reading_goal SET target_count = #{target}, update_time = #{now}
+        WHERE user_uuid = #{userUuid} AND target_year = #{year}
+    </update>
+
+    <delete id="deleteGoal">
+        DELETE FROM book_reading_goal WHERE user_uuid = #{userUuid} AND target_year = #{year}
+    </delete>
+
 </mapper>

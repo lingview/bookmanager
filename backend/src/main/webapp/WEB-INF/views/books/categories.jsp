@@ -26,12 +26,12 @@
         <p class="empty">还没有分类</p>
     </c:when>
     <c:otherwise>
+        <div class="table-scroll">
         <table class="table">
             <thead>
             <tr>
                 <th style="width: 80px;">ID</th>
-                <th>分类名称</th>
-                <th style="width: 100px;">排序</th>
+                <th>分类名称 / 排序</th>
                 <th style="width: 120px;">操作</th>
             </tr>
             </thead>
@@ -39,8 +39,17 @@
             <c:forEach var="cat" items="${categories}">
                 <tr>
                     <td>${cat.id}</td>
-                    <td><c:out value="${cat.name}"/></td>
-                    <td>${cat.sort_order}</td>
+                    <td>
+                        <form class="toolbar" style="margin: 0; gap: 6px;"
+                              action="${ctx}/books/categories/${cat.id}/edit" method="post">
+                            <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
+                            <input class="input" type="text" name="name" maxlength="100" required
+                                   value="<c:out value='${cat.name}'/>" style="width: 220px;">
+                            <input class="input" type="number" name="sort_order" style="width: 90px;"
+                                   value="${cat.sort_order}">
+                            <button type="submit" class="btn small ghost">保存</button>
+                        </form>
+                    </td>
                     <td class="actions">
                         <form action="${ctx}/books/categories/${cat.id}/delete" method="post"
                               class="inline" onsubmit="return confirm('确定删除该分类吗？');">
@@ -52,6 +61,7 @@
             </c:forEach>
             </tbody>
         </table>
+        </div>
     </c:otherwise>
 </c:choose>
 

@@ -39,10 +39,11 @@ class BookServiceImplTest {
 
     @Test
     void listBooks_shouldNormalizePagination() {
-        when(bookMapper.countBooks(isNull(), isNull())).thenReturn(25);
-        when(bookMapper.selectBooks(isNull(), isNull(), eq("u1"), eq(0), eq(12))).thenReturn(List.of());
+        when(bookMapper.countBooks(isNull(), isNull(), isNull(), isNull(), eq("u1"))).thenReturn(25);
+        when(bookMapper.selectBooks(isNull(), isNull(), isNull(), isNull(), eq("updated"), eq("u1"),
+                eq(0), eq(12))).thenReturn(List.of());
 
-        PageResult<BookViewDTO> result = bookService.listBooks(null, null, 0, 0, "u1");
+        PageResult<BookViewDTO> result = bookService.listBooks(null, null, null, null, "updated", 0, 0, "u1");
 
         assertEquals(1, result.getPage());
         assertEquals(12, result.getSize());
@@ -52,10 +53,11 @@ class BookServiceImplTest {
 
     @Test
     void listBooks_shouldCapPageSize() {
-        when(bookMapper.countBooks(eq("%x%"), isNull())).thenReturn(0);
-        when(bookMapper.selectBooks(eq("%x%"), isNull(), eq("u1"), eq(0), eq(100))).thenReturn(List.of());
+        when(bookMapper.countBooks(eq("%x%"), isNull(), isNull(), isNull(), eq("u1"))).thenReturn(0);
+        when(bookMapper.selectBooks(eq("%x%"), isNull(), isNull(), isNull(), eq("updated"), eq("u1"),
+                eq(0), eq(100))).thenReturn(List.of());
 
-        PageResult<BookViewDTO> result = bookService.listBooks("  x  ", null, 1, 500, "u1");
+        PageResult<BookViewDTO> result = bookService.listBooks("  x  ", null, null, null, "updated", 1, 500, "u1");
 
         assertEquals(100, result.getSize());
     }

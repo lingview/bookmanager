@@ -19,4 +19,8 @@ public interface UserInformationMapper {
     UserInformation getUserByUsernameAndEmail(@Param("username") String username, @Param("email") String email);
     int updatePasswordByUsername(@Param("username") String username, @Param("password") String password);
     int updateUserByUUID(UserInformation userInformation);
+
+    java.util.List<UserInformation> selectUsersPage(@Param("offset") int offset, @Param("limit") int limit);
+
+    int countUsers();
 }

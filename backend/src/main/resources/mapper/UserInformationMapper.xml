@@ -65,6 +65,18 @@
         WHERE username = #{username}
     </update>
 
+    <select id="selectUsersPage" resultType="xyz.lingview.astra.domain.UserInformation">
+        SELECT id, uuid, username, avatar, phone, email, gender, birthday, create_time, status
+        FROM user_information
+        WHERE status &lt;&gt; 0
+        ORDER BY id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM user_information WHERE status &lt;&gt; 0
+    </select>
+
     <update id="updateUserByUUID" parameterType="xyz.lingview.astra.domain.UserInformation">
         UPDATE user_information
         <set>

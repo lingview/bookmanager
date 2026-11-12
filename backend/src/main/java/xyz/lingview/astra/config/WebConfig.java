@@ -50,6 +50,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private CsrfInterceptor csrfInterceptor;
 
+    @Autowired
+    private xyz.lingview.astra.interceptor.AdminNavInterceptor adminNavInterceptor;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(sessionCookieInterceptor)
@@ -61,7 +64,8 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addInterceptor(pageAuthInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/api/**", "/login", "/logout", "/error", "/file/**");
+                .excludePathPatterns("/api/**", "/login", "/logout", "/register", "/forgot-password",
+                        "/error", "/file/**");
 
         registry.addInterceptor(csrfInterceptor)
                 .addPathPatterns("/**")
@@ -70,6 +74,11 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(userPermissionInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/login", "/logout", "/error");
+
+        registry.addInterceptor(adminNavInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/api/**", "/login", "/logout", "/register", "/forgot-password",
+                        "/error", "/file/**");
     }
 
     @Bean

@@ -29,10 +29,14 @@ import xyz.lingview.astra.dto.request.BookFormDTO;
 import xyz.lingview.astra.dto.request.ChapterOrderDTO;
 import xyz.lingview.astra.dto.response.BookViewDTO;
 import xyz.lingview.astra.dto.response.CoverCandidateDTO;
+import xyz.lingview.astra.dto.response.ImportPreviewDTO;
+import xyz.lingview.astra.dto.response.ParsedChapterDTO;
+import xyz.lingview.astra.dto.response.PreviewChapterContentDTO;
 import xyz.lingview.astra.security.CsrfTokenService;
 import xyz.lingview.astra.service.BookChapterService;
 import xyz.lingview.astra.service.BookService;
 import xyz.lingview.astra.service.CoverSearchService;
+import xyz.lingview.astra.service.ImportPreviewService;
 import xyz.lingview.astra.service.UploadService;
 
 import java.util.LinkedHashMap;
@@ -59,6 +63,9 @@ public class BookAdminController {
     private CoverSearchService coverSearchService;
 
     @Autowired
+    private ImportPreviewService importPreviewService;
+
+    @Autowired
     private CsrfTokenService csrfTokenService;
 
     // 新增图书表单
@@ -68,21 +75,146 @@ public class BookAdminController {
         return renderBookForm(model, session, null, null, new BookFormDTO(), null, null);
     }
 
-    // 新增图书
+    // 新增图书（可同时导入正文文件）
     @PostMapping
     @RequiresPermission(MANAGE_PERMISSION)
     public String createBook(@Valid @ModelAttribute("bookForm") BookFormDTO form, BindingResult binding,
                              @RequestParam(value = "cover", required = false) MultipartFile cover,
+                             @RequestParam(value = "bookFile", required = false) MultipartFile bookFile,
+                             @RequestParam(value = "importToken", required = false) String importToken,
+                             RedirectAttributes redirectAttributes,
                              HttpServletRequest request, HttpSession session, Model model) {
         if (binding.hasErrors()) {
+            addImportPreview(model, importToken, session);
             return renderBookForm(model, session, null, null, form, fieldErrors(binding), null);
         }
+
+        List<ParsedChapterDTO> chapters;
         try {
-            Integer id = bookService.createBook(form, resolveCover(request, cover, form.getCover_url()));
+            chapters = resolveChapters(bookFile, importToken, session);
+        } catch (RuntimeException | java.io.IOException e) {
+            addImportPreview(model, importToken, session);
+            String message = e instanceof java.io.IOException ? "读取文件失败" : e.getMessage();
+            return renderBookForm(model, session, null, null, form, null, message);
+        }
+
+        try {
+            String coverUrl = resolveCover(request, cover, form.getCover_url());
+            Integer id = chapters == null
+                    ? bookService.createBook(form, coverUrl)
+                    : bookService.createBookWithChapters(form, coverUrl, chapters);
+            if (importToken != null && !importToken.trim().isEmpty()) {
+                importPreviewService.discard(importToken.trim(), session);
+            }
+            if (chapters != null && !chapters.isEmpty()) {
+                redirectAttributes.addFlashAttribute("flashMessage",
+                        "图书已创建，共导入 " + chapters.size() + " 章");
+            }
             return "redirect:/books/" + id;
         } catch (RuntimeException e) {
+            addImportPreview(model, importToken, session);
             return renderBookForm(model, session, null, null, form, null, e.getMessage());
         }
+    }
+
+    private List<ParsedChapterDTO> resolveChapters(MultipartFile bookFile, String importToken,
+                                                    HttpSession session) throws java.io.IOException {
+        if (importToken != null && !importToken.trim().isEmpty()) {
+            return importPreviewService.loadChapters(importToken.trim(), session);
+        }
+        if (bookFile != null && !bookFile.isEmpty()) {
+            return bookChapterService.parseChapters(bookFile.getOriginalFilename(), bookFile.getBytes());
+        }
+        return null;
+    }
+
+    private void addImportPreview(Model model, String importToken, HttpSession session) {
+        if (importToken == null || importToken.trim().isEmpty()) {
+            return;
+        }
+        try {
+            model.addAttribute("importPreview", importPreviewService.getPreview(importToken.trim(), session));
+            model.addAttribute("importToken", importToken.trim());
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    // 上传文件并生成预览（不落库）
+    @PostMapping("/import/preview")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<ImportPreviewDTO> createImportPreview(@RequestParam("file") MultipartFile file,
+                                                             HttpSession session) {
+        try {
+            return ApiResponse.success(importPreviewService.createPreview(file, session));
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    // 获取预览摘要与章节列表
+    @GetMapping("/import/preview/{token}")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<ImportPreviewDTO> getImportPreview(@PathVariable String token, HttpSession session) {
+        try {
+            return ApiResponse.success(importPreviewService.getPreview(token, session));
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    // 获取预览中某章正文
+    @GetMapping("/import/preview/{token}/chapters/{index}")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<PreviewChapterContentDTO> getImportChapter(@PathVariable String token,
+                                                                  @PathVariable int index,
+                                                                  HttpSession session) {
+        try {
+            return ApiResponse.success(importPreviewService.getChapter(token, session, index));
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    // 保存预览中某章的标题与正文
+    @PostMapping("/import/preview/{token}/chapters/{index}")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<ImportPreviewDTO> saveImportChapter(@PathVariable String token,
+                                                           @PathVariable int index,
+                                                           @RequestParam(required = false) String title,
+                                                           @RequestParam(required = false) String content,
+                                                           HttpSession session) {
+        try {
+            return ApiResponse.success(importPreviewService.saveChapter(token, session, index, title, content));
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    // 删除预览中的某章
+    @PostMapping("/import/preview/{token}/chapters/{index}/delete")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<ImportPreviewDTO> deleteImportChapter(@PathVariable String token,
+                                                             @PathVariable int index,
+                                                             HttpSession session) {
+        try {
+            return ApiResponse.success(importPreviewService.deleteChapter(token, session, index));
+        } catch (RuntimeException e) {
+            return ApiResponse.error(400, e.getMessage());
+        }
+    }
+
+    // 放弃预览文件
+    @PostMapping("/import/preview/{token}/discard")
+    @RequiresPermission(MANAGE_PERMISSION)
+    @ResponseBody
+    public ApiResponse<String> discardImportPreview(@PathVariable String token, HttpSession session) {
+        importPreviewService.discard(token, session);
+        return ApiResponse.success("ok");
     }
 
     // 编辑图书表单
@@ -100,6 +232,11 @@ public class BookAdminController {
         form.setAuthor(book.getAuthor());
         form.setCategory_id(book.getCategory_id());
         form.setDescription(book.getDescription());
+        form.setIsbn(book.getIsbn());
+        form.setPublisher(book.getPublisher());
+        form.setPublish_year(book.getPublish_year());
+        form.setSource_url(book.getSource_url());
+        form.setTags(book.getTag_names());
         form.setCover_url(book.getCover_url());
         return renderBookForm(model, session, id, book.getCover_url(), form, null, null);
     }
@@ -302,6 +439,22 @@ public class BookAdminController {
         try {
             bookService.createCategory(form);
             redirectAttributes.addFlashAttribute("flashMessage", "分类已添加");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("flashError", e.getMessage());
+        }
+        return "redirect:/books/categories";
+    }
+
+    // 分类改名/调整排序
+    @PostMapping("/categories/{categoryId}/edit")
+    @RequiresPermission(MANAGE_PERMISSION)
+    public String renameCategory(@PathVariable Integer categoryId,
+                                 @RequestParam String name,
+                                 @RequestParam(required = false) Integer sort_order,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            bookService.renameCategory(categoryId, name, sort_order);
+            redirectAttributes.addFlashAttribute("flashMessage", "分类已更新");
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }

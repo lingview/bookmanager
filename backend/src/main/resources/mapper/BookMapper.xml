@@ -8,8 +8,15 @@
         b.id, b.title, b.author, b.category_id,
         c.name AS category_name,
         b.cover_url, b.description,
+        b.isbn, b.publisher, b.publish_year, b.source_url,
+        (SELECT GROUP_CONCAT(t.name) FROM book_tag_rel tr
+         JOIN book_tag t ON t.id = tr.tag_id WHERE tr.book_id = b.id) AS tag_names,
+        s.status AS shelf_status,
+        r.rating AS my_rating,
+        r.review AS my_review,
         b.update_time,
         (SELECT COUNT(*) FROM book_chapter ch WHERE ch.book_id = b.id AND ch.status = 1) AS chapter_count,
+        (SELECT COALESCE(SUM(ch.word_count), 0) FROM book_chapter ch WHERE ch.book_id = b.id AND ch.status = 1) AS word_total,
         p.chapter_id AS progress_chapter_id,
         pc.title AS progress_chapter_title,
         p.scroll_percent AS progress_scroll_percent
@@ -24,13 +31,24 @@
             <if test="categoryId != null">
                 AND b.category_id = #{categoryId}
             </if>
+            <if test="tagName != null">
+                AND EXISTS (SELECT 1 FROM book_tag_rel tr
+                            JOIN book_tag t ON t.id = tr.tag_id
+                            WHERE tr.book_id = b.id AND t.name = #{tagName})
+            </if>
         </where>
     </sql>
 
     <select id="countBooks" resultType="int">
         SELECT COUNT(*)
         FROM book b
+        <if test="shelfStatus != null">
+            JOIN book_user_shelf s ON s.book_id = b.id AND s.user_uuid = #{userUuid}
+        </if>
         <include refid="bookFilters"/>
+        <if test="shelfStatus != null">
+            AND s.status = #{shelfStatus}
+        </if>
     </select>
 
     <select id="selectBooks" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
@@ -40,9 +58,46 @@
         LEFT JOIN book_category c ON b.category_id = c.id
         LEFT JOIN book_reading_progress p ON p.book_id = b.id AND p.user_uuid = #{userUuid}
         LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
+        LEFT JOIN book_user_shelf s ON s.book_id = b.id AND s.user_uuid = #{userUuid}
+        LEFT JOIN book_user_review r ON r.book_id = b.id AND r.user_uuid = #{userUuid}
         <include refid="bookFilters"/>
-        ORDER BY b.update_time DESC, b.id DESC
+        <if test="shelfStatus != null">
+            AND s.status = #{shelfStatus}
+        </if>
+        <choose>
+            <when test="sort == 'recent_read'">
+                ORDER BY CASE WHEN p.update_time IS NULL THEN 1 ELSE 0 END, p.update_time DESC, b.id DESC
+            </when>
+            <when test="sort == 'title'">
+                ORDER BY b.title ASC, b.id ASC
+            </when>
+            <when test="sort == 'chapters'">
+                ORDER BY chapter_count DESC, b.id DESC
+            </when>
+            <when test="sort == 'words'">
+                ORDER BY word_total DESC, b.id DESC
+            </when>
+            <otherwise>
+                ORDER BY b.update_time DESC, b.id DESC
+            </otherwise>
+        </choose>
         LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectRecentReading" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
+        SELECT
+        <include refid="bookColumns"/>,
+        (SELECT COUNT(*) FROM book_chapter ch2
+         WHERE ch2.book_id = b.id AND ch2.status = 1 AND ch2.sort_order &lt; pc.sort_order) AS progress_chapter_index
+        FROM book b
+        LEFT JOIN book_category c ON b.category_id = c.id
+        JOIN book_reading_progress p ON p.book_id = b.id AND p.user_uuid = #{userUuid}
+        LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
+        LEFT JOIN book_user_shelf s ON s.book_id = b.id AND s.user_uuid = #{userUuid}
+        LEFT JOIN book_user_review r ON r.book_id = b.id AND r.user_uuid = #{userUuid}
+        WHERE b.status = 1
+        ORDER BY p.update_time DESC, b.id DESC
+        LIMIT #{limit}
     </select>
 
     <select id="selectBook" resultType="xyz.lingview.astra.dto.response.BookViewDTO">
@@ -52,12 +107,19 @@
         LEFT JOIN book_category c ON b.category_id = c.id
         LEFT JOIN book_reading_progress p ON p.book_id = b.id AND p.user_uuid = #{userUuid}
         LEFT JOIN book_chapter pc ON pc.id = p.chapter_id AND pc.status = 1
+        LEFT JOIN book_user_shelf s ON s.book_id = b.id AND s.user_uuid = #{userUuid}
+        LEFT JOIN book_user_review r ON r.book_id = b.id AND r.user_uuid = #{userUuid}
         WHERE b.id = #{id} AND b.status = 1
     </select>
 
+    <select id="selectBookIdAtOffset" resultType="java.lang.Integer">
+        SELECT b.id FROM book b WHERE b.status = 1 ORDER BY b.id LIMIT 1 OFFSET #{offset}
+    </select>
+
     <insert id="insertBook" parameterType="xyz.lingview.astra.domain.Book" keyProperty="id">
-        INSERT INTO book (title, author, category_id, cover_url, description, status)
-        VALUES (#{title}, #{author}, #{category_id}, #{cover_url}, #{description}, 1)
+        INSERT INTO book (title, author, category_id, cover_url, description, isbn, publisher, publish_year, source_url, status)
+        VALUES (#{title}, #{author}, #{category_id}, #{cover_url}, #{description},
+                #{isbn}, #{publisher}, #{publish_year}, #{source_url}, 1)
     </insert>
 
     <update id="updateBook" parameterType="xyz.lingview.astra.domain.Book">
@@ -67,6 +129,10 @@
             category_id = #{category_id},
             cover_url = #{cover_url},
             description = #{description},
+            isbn = #{isbn},
+            publisher = #{publisher},
+            publish_year = #{publish_year},
+            source_url = #{source_url},
             update_time = #{update_time}
         WHERE id = #{id} AND status = 1
     </update>
@@ -85,6 +151,16 @@
     <select id="countCategoryByName" resultType="int">
         SELECT COUNT(*) FROM book_category WHERE name = #{name}
     </select>
+
+    <select id="countCategoryByNameExcluding" resultType="int">
+        SELECT COUNT(*) FROM book_category WHERE name = #{name} AND id &lt;&gt; #{id}
+    </select>
+
+    <update id="updateCategory">
+        UPDATE book_category
+        SET name = #{name}, sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
 
     <select id="countBooksByCategory" resultType="int">
         SELECT COUNT(*) FROM book WHERE category_id = #{categoryId} AND status = 1
@@ -121,5 +197,120 @@
         SET chapter_id = #{chapterId}, scroll_percent = #{scrollPercent}
         WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
     </update>
+
+    <select id="selectShelfStatus" resultType="java.lang.String">
+        SELECT status FROM book_user_shelf WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </select>
+
+    <insert id="insertShelf">
+        INSERT INTO book_user_shelf (user_uuid, book_id, status, update_time)
+        VALUES (#{userUuid}, #{bookId}, #{status}, #{now})
+    </insert>
+
+    <update id="updateShelfStatus">
+        UPDATE book_user_shelf SET status = #{status}, update_time = #{now}
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </update>
+
+    <delete id="deleteShelf">
+        DELETE FROM book_user_shelf WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </delete>
+
+    <select id="countReview" resultType="int">
+        SELECT COUNT(*) FROM book_user_review WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </select>
+
+    <insert id="insertReview">
+        INSERT INTO book_user_review (user_uuid, book_id, rating, review, update_time)
+        VALUES (#{userUuid}, #{bookId}, #{rating}, #{review}, #{now})
+    </insert>
+
+    <update id="updateReview">
+        UPDATE book_user_review SET rating = #{rating}, review = #{review}, update_time = #{now}
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </update>
+
+    <delete id="deleteReview">
+        DELETE FROM book_user_review WHERE user_uuid = #{userUuid} AND book_id = #{bookId}
+    </delete>
+
+    <select id="selectBookmarks" resultType="xyz.lingview.astra.domain.BookBookmark">
+        SELECT bm.id, bm.user_uuid, bm.book_id, bm.chapter_id,
+               c.title AS chapter_title, bm.scroll_percent, bm.note, bm.create_time
+        FROM book_bookmark bm
+        LEFT JOIN book_chapter c ON c.id = bm.chapter_id AND c.status = 1
+        WHERE bm.user_uuid = #{userUuid} AND bm.book_id = #{bookId}
+        ORDER BY bm.create_time DESC, bm.id DESC
+    </select>
+
+    <insert id="insertBookmark">
+        INSERT INTO book_bookmark (user_uuid, book_id, chapter_id, scroll_percent, note, create_time)
+        VALUES (#{userUuid}, #{bookId}, #{chapterId}, #{scrollPercent}, #{note}, #{now})
+    </insert>
+
+    <delete id="deleteBookmark">
+        DELETE FROM book_bookmark WHERE id = #{id} AND user_uuid = #{userUuid}
+    </delete>
+
+    <select id="selectChapterBookId" resultType="java.lang.Integer">
+        SELECT book_id FROM book_chapter WHERE id = #{chapterId} AND status = 1
+    </select>
+
+    <select id="searchChapters" resultType="xyz.lingview.astra.domain.BookChapter">
+        SELECT id, book_id, title, content
+        FROM book_chapter
+        WHERE book_id = #{bookId} AND status = 1
+          AND (title LIKE #{pattern} OR content LIKE #{pattern})
+        ORDER BY sort_order, id
+        LIMIT 20
+    </select>
+
+    <select id="selectAllTags" resultType="xyz.lingview.astra.domain.BookTag">
+        SELECT id, name FROM book_tag ORDER BY name
+    </select>
+
+    <select id="selectTagIdByName" resultType="java.lang.Integer">
+        SELECT id FROM book_tag WHERE name = #{name}
+    </select>
+
+    <insert id="insertTag" parameterType="xyz.lingview.astra.domain.BookTag" keyProperty="id">
+        INSERT INTO book_tag (name) VALUES (#{name})
+    </insert>
+
+    <delete id="deleteBookTags">
+        DELETE FROM book_tag_rel WHERE book_id = #{bookId}
+    </delete>
+
+    <insert id="insertBookTag">
+        INSERT INTO book_tag_rel (book_id, tag_id) VALUES (#{bookId}, #{tagId})
+    </insert>
+
+    <select id="searchAllChapters" resultType="xyz.lingview.astra.dto.response.FullTextRowDTO">
+        SELECT c.book_id AS book_id, b.title AS book_title, c.id AS chapter_id,
+               c.title AS chapter_title, c.content AS content
+        FROM book_chapter c
+        JOIN book b ON b.id = c.book_id AND b.status = 1
+        WHERE c.status = 1 AND (c.title LIKE #{pattern} OR c.content LIKE #{pattern})
+        ORDER BY c.book_id, c.sort_order, c.id
+        LIMIT 50
+    </select>
+
+    <select id="selectNotes" resultType="xyz.lingview.astra.domain.BookNote">
+        SELECT n.id, n.user_uuid, n.book_id, n.chapter_id, c.title AS chapter_title,
+               n.quote_text, n.note_text, n.create_time
+        FROM book_note n
+        LEFT JOIN book_chapter c ON c.id = n.chapter_id AND c.status = 1
+        WHERE n.user_uuid = #{userUuid} AND n.book_id = #{bookId}
+        ORDER BY n.create_time DESC, n.id DESC
+    </select>
+
+    <insert id="insertNote">
+        INSERT INTO book_note (user_uuid, book_id, chapter_id, quote_text, note_text, create_time)
+        VALUES (#{userUuid}, #{bookId}, #{chapterId}, #{quoteText}, #{noteText}, #{now})
+    </insert>
+
+    <delete id="deleteNote">
+        DELETE FROM book_note WHERE id = #{id} AND user_uuid = #{userUuid}
+    </delete>
 
 </mapper>

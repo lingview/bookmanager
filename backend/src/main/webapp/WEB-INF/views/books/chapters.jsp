@@ -17,10 +17,10 @@
     <form class="toolbar" style="margin: 0;"
           action="${ctx}/books/${book.id}/chapters/import" method="post" enctype="multipart/form-data">
         <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
-        <input class="input" type="file" name="file" accept=".txt" required>
+        <input class="input" type="file" name="file" accept=".txt,.epub" required>
         <button type="submit" class="btn">导入</button>
         <span class="form-hint" style="margin: 0;">
-            单文件按“第X章 / 第X回 / Chapter N”标题自动拆分；无标题则整篇作为一章；支持 UTF-8 与 GBK
+            txt 按“第X章 / 第X回 / Chapter N”标题拆分（UTF-8/GBK）；epub 按阅读顺序逐篇导入
         </span>
     </form>
 </div>
@@ -30,6 +30,7 @@
         <p class="empty">还没有章节，可以手动新增或批量导入</p>
     </c:when>
     <c:otherwise>
+        <div class="table-scroll">
         <table class="table" id="chapterTable">
             <thead>
             <tr>
@@ -58,6 +59,7 @@
             </c:forEach>
             </tbody>
         </table>
+        </div>
 
         <c:if test="${pageResult.total_pages > 1}">
             <div class="pagination">

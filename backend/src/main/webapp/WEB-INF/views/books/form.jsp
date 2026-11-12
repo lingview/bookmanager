@@ -56,6 +56,37 @@
         </div>
 
         <div class="form-row">
+            <label class="form-label" for="publisher">出版社</label>
+            <input class="input" type="text" id="publisher" name="publisher" maxlength="100"
+                   value="<c:out value='${bookForm.publisher}'/>">
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="publish_year">出版年</label>
+            <input class="input" type="number" id="publish_year" name="publish_year" min="1000" max="2100"
+                   style="width: 160px;" value="${bookForm.publish_year}">
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="isbn">ISBN</label>
+            <input class="input" type="text" id="isbn" name="isbn" maxlength="32"
+                   value="<c:out value='${bookForm.isbn}'/>">
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="source_url">来源链接</label>
+            <input class="input" type="text" id="source_url" name="source_url" maxlength="500"
+                   placeholder="https://" value="<c:out value='${bookForm.source_url}'/>">
+        </div>
+
+        <div class="form-row">
+            <label class="form-label" for="tags">标签</label>
+            <input class="input" type="text" id="tags" name="tags" maxlength="500"
+                   placeholder="如：科幻, 短篇" value="<c:out value='${bookForm.tags}'/>">
+            <p class="form-hint">多个标签用逗号分隔，最多 10 个</p>
+        </div>
+
+        <div class="form-row">
             <label class="form-label" for="cover">封面</label>
 
             <div id="coverPreviewWrap" style="margin-bottom: 10px; display: ${empty coverUrl ? 'none' : 'block'};">
@@ -74,8 +105,32 @@
             <p class="form-hint">支持 jpg/png/gif/webp/bmp，最大 5MB；也可上传本地图片，不选择则保留现有封面</p>
         </div>
 
+        <c:if test="${empty bookId}">
+            <div class="form-row">
+                <label class="form-label" for="bookFile">正文文件（可选）</label>
+                <div class="import-upload">
+                    <input class="input" type="file" id="bookFile" name="bookFile" accept=".txt,.epub">
+                    <button type="button" class="btn ghost" id="parseBookFile">解析预览</button>
+                </div>
+                <p class="form-hint">支持 .txt / .epub，最大 20MB；不选文件则只创建空书，稍后可在章节管理页导入</p>
+
+                <div class="import-summary" id="importSummary" ${empty importPreview ? 'hidden' : ''}>
+                    <span class="import-summary-text" id="importSummaryText">
+                        <c:if test="${not empty importPreview}">
+                            <c:out value="${importPreview.filename}"/> · 共 ${importPreview.chapter_count} 章 · 约 ${importPreview.total_words} 字
+                        </c:if>
+                    </span>
+                    <button type="button" class="btn small ghost" id="previewChapters">查看/编辑章节</button>
+                    <button type="button" class="btn small ghost" id="removeImport">移除</button>
+                </div>
+                <div class="import-error" id="importError" hidden></div>
+                <input type="hidden" name="importToken" id="importToken"
+                       value="<c:out value='${importToken}'/>">
+            </div>
+        </c:if>
+
         <div class="form-actions">
-            <button type="submit" class="btn">${empty bookId ? '创建' : '保存'}</button>
+            <button type="submit" class="btn" id="createBookBtn">${empty bookId ? (empty importPreview ? '创建' : '创建并导入') : '保存'}</button>
             <a class="btn ghost" href="${ctx}/books${empty bookId ? '' : '/'.concat(bookId)}">取消</a>
         </div>
     </form>
@@ -91,6 +146,30 @@
         </div>
         <div class="picker-body" id="coverPickerBody"></div>
         <p class="picker-foot">图片来自网络搜索，请确认已获得使用授权后再采用</p>
+    </div>
+</div>
+
+<div class="import-mask" id="importMask" hidden>
+    <div class="import-dialog">
+        <div class="import-head">
+            <span id="importTitle">章节预览</span>
+            <button type="button" class="link-btn" id="importClose">关闭</button>
+        </div>
+        <div class="import-body">
+            <div class="import-list" id="importList"></div>
+            <div class="import-editor" id="importEditor" hidden>
+                <input class="input" type="text" id="chapterTitle" maxlength="255" placeholder="章节标题">
+                <textarea class="textarea" id="chapterContent" rows="12" placeholder="章节正文"></textarea>
+                <div class="import-editor-actions">
+                    <button type="button" class="btn small" id="saveChapter">保存本章</button>
+                    <span class="muted" id="chapterWords"></span>
+                </div>
+            </div>
+        </div>
+        <div class="import-foot">
+            <span class="muted" id="importFootText"></span>
+            <button type="button" class="btn" id="importDone">使用此文件</button>
+        </div>
     </div>
 </div>
 
@@ -198,3 +277,4 @@
         }
     })();
 </script>
+<script src="${ctx}/assets/book-import.js" data-ctx="${ctx}"></script>

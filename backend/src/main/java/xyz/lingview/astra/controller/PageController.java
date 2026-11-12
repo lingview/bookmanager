@@ -40,6 +40,19 @@ public class PageController {
         return "login";
     }
 
+    // 渲染注册页
+    @GetMapping("/register")
+    public String registerPage(HttpSession session, Model model) {
+        prepareCaptcha(session, model);
+        return "register";
+    }
+
+    // 渲染忘记密码页
+    @GetMapping("/forgot-password")
+    public String forgotPasswordPage() {
+        return "forgot-password";
+    }
+
     // 提交登录表单
     @PostMapping("/login")
     public String login(@ModelAttribute LoginDTO loginDTO,

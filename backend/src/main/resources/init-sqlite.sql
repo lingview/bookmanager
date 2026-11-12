@@ -251,6 +251,10 @@ CREATE TABLE book (
     category_id INTEGER,
     cover_url TEXT,
     description TEXT,
+    isbn TEXT,
+    publisher TEXT,
+    publish_year INTEGER,
+    source_url TEXT,
     status INTEGER NOT NULL DEFAULT 1,
     create_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
     update_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
@@ -325,5 +329,88 @@ SELECT 1, id FROM permission WHERE code = 'book:management';
 
 INSERT INTO dashboard_menu (title, icon, path, parent_id, permission, sort_order, type)
 VALUES ('图书管理', 'book', '/books', NULL, 'book:management', 30, 'sidebar');
+
+DROP TABLE IF EXISTS book_user_shelf;
+CREATE TABLE book_user_shelf (
+    user_uuid TEXT NOT NULL,
+    book_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    update_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (user_uuid, book_id),
+    FOREIGN KEY (user_uuid) REFERENCES user_information (uuid) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES book (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX idx_shelf_book ON book_user_shelf (book_id);
+CREATE INDEX idx_shelf_status ON book_user_shelf (user_uuid, status);
+
+DROP TABLE IF EXISTS book_user_review;
+CREATE TABLE book_user_review (
+    user_uuid TEXT NOT NULL,
+    book_id INTEGER NOT NULL,
+    rating INTEGER,
+    review TEXT,
+    update_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (user_uuid, book_id),
+    FOREIGN KEY (user_uuid) REFERENCES user_information (uuid) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES book (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+DROP TABLE IF EXISTS book_bookmark;
+CREATE TABLE book_bookmark (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_uuid TEXT NOT NULL,
+    book_id INTEGER NOT NULL,
+    chapter_id INTEGER NOT NULL,
+    scroll_percent NUMERIC NOT NULL DEFAULT 0.00,
+    note TEXT,
+    create_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (user_uuid) REFERENCES user_information (uuid) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES book (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (chapter_id) REFERENCES book_chapter (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX idx_bookmark_user_book ON book_bookmark (user_uuid, book_id);
+
+DROP TABLE IF EXISTS book_reading_goal;
+CREATE TABLE book_reading_goal (
+    user_uuid TEXT NOT NULL,
+    target_year INTEGER NOT NULL,
+    target_count INTEGER NOT NULL,
+    update_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (user_uuid, target_year),
+    FOREIGN KEY (user_uuid) REFERENCES user_information (uuid) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+DROP TABLE IF EXISTS book_tag;
+CREATE TABLE book_tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE UNIQUE INDEX uk_book_tag_name ON book_tag (name);
+
+DROP TABLE IF EXISTS book_tag_rel;
+CREATE TABLE book_tag_rel (
+    book_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    PRIMARY KEY (book_id, tag_id),
+    FOREIGN KEY (book_id) REFERENCES book (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES book_tag (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX idx_tag_rel_tag ON book_tag_rel (tag_id);
+
+DROP TABLE IF EXISTS book_note;
+CREATE TABLE book_note (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_uuid TEXT NOT NULL,
+    book_id INTEGER NOT NULL,
+    chapter_id INTEGER NOT NULL,
+    quote_text TEXT,
+    note_text TEXT,
+    create_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (user_uuid) REFERENCES user_information (uuid) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES book (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (chapter_id) REFERENCES book_chapter (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX idx_note_user_book ON book_note (user_uuid, book_id);
 
 PRAGMA foreign_keys = ON;

@@ -115,6 +115,15 @@
         .btn:hover {
             background-color: #337ecc;
         }
+
+        .links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .links a { color: #409eff; text-decoration: none; }
     </style>
 </head>
 
@@ -156,6 +165,11 @@
 
                 <button type="submit" class="btn">登录</button>
             </form>
+
+            <div class="links">
+                <a href="${pageContext.request.contextPath}/register">注册账号</a>
+                <a href="${pageContext.request.contextPath}/forgot-password">忘记密码</a>
+            </div>
         </div>
     </div>
 </div>

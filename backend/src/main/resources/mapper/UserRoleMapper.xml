@@ -38,4 +38,15 @@
         WHERE user_id = #{userId} AND role_id = #{roleId}
     </select>
 
+    <select id="selectAllRoles" resultType="xyz.lingview.astra.domain.Role">
+        SELECT id, code, name, description, status
+        FROM role
+        WHERE status = 1
+        ORDER BY id
+    </select>
+
+    <delete id="deleteUserRolesByUserId">
+        DELETE FROM user_role WHERE user_id = #{userId}
+    </delete>
+
 </mapper>
