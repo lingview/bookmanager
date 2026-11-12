@@ -96,6 +96,9 @@ public interface BookMapper {
 
     int deleteBookmark(@Param("id") Integer id, @Param("userUuid") String userUuid);
 
+    Integer selectLatestBookmarkId(@Param("userUuid") String userUuid, @Param("bookId") Integer bookId,
+                                   @Param("chapterId") Integer chapterId);
+
     Integer selectChapterBookId(@Param("chapterId") Integer chapterId);
 
     List<BookChapter> searchChapters(@Param("bookId") Integer bookId, @Param("pattern") String pattern);

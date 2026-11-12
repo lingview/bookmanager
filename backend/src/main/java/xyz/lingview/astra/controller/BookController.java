@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import xyz.lingview.astra.common.ApiResponse;
 import xyz.lingview.astra.domain.BookChapter;
+import xyz.lingview.astra.domain.BookBookmark;
 import xyz.lingview.astra.dto.request.BookProgressDTO;
 import xyz.lingview.astra.dto.request.PageResult;
 import xyz.lingview.astra.domain.BookNote;
@@ -81,6 +82,10 @@ public class BookController {
         model.addAttribute("tags", bookService.listTags());
         model.addAttribute("sort", sort);
         model.addAttribute("categories", bookService.listCategories());
+        if (userUuid != null) {
+            model.addAttribute("recentBooks", bookService.listRecentReading(userUuid, 2));
+            model.addAttribute("overview", bookStatsService.getPersonalOverview(userUuid));
+        }
         model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/list";
@@ -164,6 +169,7 @@ public class BookController {
     public String read(@PathVariable Integer id,
                        @RequestParam(required = false) Integer chapterId,
                        @RequestParam(required = false) BigDecimal scroll,
+                       @RequestParam(required = false) Integer note,
                        HttpSession session, Model model, HttpServletResponse response) {
         String userUuid = currentUserService.getCurrentUserUuid();
         BookViewDTO book = bookService.getBook(id, userUuid);
@@ -207,8 +213,29 @@ public class BookController {
             restore = scroll;
         }
         model.addAttribute("restorePercent", restore);
-        model.addAttribute("bookmarks", userUuid == null ? List.of() : bookService.listBookmarks(userUuid, id));
-        model.addAttribute("notes", userUuid == null ? List.of() : bookService.listNotes(userUuid, id));
+        List<BookBookmark> bookmarks = userUuid == null
+                ? List.of() : bookService.listBookmarks(userUuid, id);
+        BookBookmark currentBookmark = null;
+        for (BookBookmark bookmark : bookmarks) {
+            if (current.getId().equals(bookmark.getChapter_id())) {
+                currentBookmark = bookmark;
+                break;
+            }
+        }
+        model.addAttribute("bookmarks", bookmarks);
+        model.addAttribute("currentBookmark", currentBookmark);
+        List<BookNote> notes = userUuid == null ? List.of() : bookService.listNotes(userUuid, id);
+        model.addAttribute("notes", notes);
+        BookNote focusNote = null;
+        if (note != null) {
+            for (BookNote item : notes) {
+                if (note.equals(item.getId())) {
+                    focusNote = item;
+                    break;
+                }
+            }
+        }
+        model.addAttribute("focusNote", focusNote);
         model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/read";
@@ -238,17 +265,16 @@ public class BookController {
     // 添加书签
     @PostMapping("/{id}/bookmarks")
     @ResponseBody
-    public ApiResponse<String> addBookmark(@PathVariable Integer id,
-                                           @RequestParam Integer chapter_id,
-                                           @RequestParam(defaultValue = "0") BigDecimal scroll_percent,
-                                           @RequestParam(required = false) String note) {
+    public ApiResponse<Integer> addBookmark(@PathVariable Integer id,
+                                            @RequestParam Integer chapter_id,
+                                            @RequestParam(defaultValue = "0") BigDecimal scroll_percent,
+                                            @RequestParam(required = false) String note) {
         String userUuid = currentUserService.getCurrentUserUuid();
         if (userUuid == null) {
             return ApiResponse.error(401, "用户未登录");
         }
         try {
-            bookService.addBookmark(id, chapter_id, scroll_percent, note, userUuid);
-            return ApiResponse.success("ok");
+            return ApiResponse.success(bookService.addBookmark(id, chapter_id, scroll_percent, note, userUuid));
         } catch (RuntimeException e) {
             return ApiResponse.error(400, e.getMessage());
         }

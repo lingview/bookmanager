@@ -52,7 +52,7 @@ public interface BookService {
 
     List<BookBookmark> listBookmarks(String userUuid, Integer bookId);
 
-    void addBookmark(Integer bookId, Integer chapterId, BigDecimal scrollPercent, String note, String userUuid);
+    Integer addBookmark(Integer bookId, Integer chapterId, BigDecimal scrollPercent, String note, String userUuid);
 
     void deleteBookmark(Integer id, String userUuid);
 

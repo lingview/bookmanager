@@ -334,8 +334,8 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
-    public void addBookmark(Integer bookId, Integer chapterId, BigDecimal scrollPercent, String note,
-                            String userUuid) {
+    public Integer addBookmark(Integer bookId, Integer chapterId, BigDecimal scrollPercent, String note,
+                               String userUuid) {
         Integer ownerBookId = bookMapper.selectChapterBookId(chapterId);
         if (ownerBookId == null || !ownerBookId.equals(bookId)) {
             throw new RuntimeException("章节不存在或不属于该图书");
@@ -353,6 +353,7 @@ public class BookServiceImpl implements BookService {
             trimmedNote = trimmedNote.substring(0, 200);
         }
         bookMapper.insertBookmark(userUuid, bookId, chapterId, percent, trimmedNote, LocalDateTime.now());
+        return bookMapper.selectLatestBookmarkId(userUuid, bookId, chapterId);
     }
 
     @Override

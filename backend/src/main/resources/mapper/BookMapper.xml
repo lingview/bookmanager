@@ -252,6 +252,12 @@
         DELETE FROM book_bookmark WHERE id = #{id} AND user_uuid = #{userUuid}
     </delete>
 
+    <select id="selectLatestBookmarkId" resultType="java.lang.Integer">
+        SELECT id FROM book_bookmark
+        WHERE user_uuid = #{userUuid} AND book_id = #{bookId} AND chapter_id = #{chapterId}
+        ORDER BY id DESC LIMIT 1
+    </select>
+
     <select id="selectChapterBookId" resultType="java.lang.Integer">
         SELECT book_id FROM book_chapter WHERE id = #{chapterId} AND status = 1
     </select>

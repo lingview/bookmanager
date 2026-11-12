@@ -7,6 +7,66 @@
        value="${not empty keyword or not empty category_id or not empty tag or not empty shelf}"/>
 <%@ include file="../common/head.jspf" %>
 
+<div class="shelf-layout">
+    <aside class="shelf-rail shelf-rail-left">
+        <section class="zone">
+            <div class="zone-head">
+                <h2 class="zone-title">继续阅读</h2>
+                <a class="zone-link" href="${ctx}/reading">全部</a>
+            </div>
+            <c:choose>
+                <c:when test="${empty recentBooks}">
+                    <p class="rail-empty">还没有阅读记录</p>
+                </c:when>
+                <c:otherwise>
+                    <div class="continue-list">
+                        <c:forEach var="rb" items="${recentBooks}">
+                            <c:url var="readUrl" value="/books/${rb.id}/read">
+                                <c:if test="${not empty rb.progress_chapter_id}">
+                                    <c:param name="chapterId" value="${rb.progress_chapter_id}"/>
+                                </c:if>
+                            </c:url>
+                            <a class="continue-item" href="${readUrl}">
+                                <span class="continue-cover">
+                                    <c:choose>
+                                        <c:when test="${not empty rb.cover_url}">
+                                            <img src="<c:out value='${rb.cover_url}'/>" alt="">
+                                        </c:when>
+                                        <c:otherwise>无封面</c:otherwise>
+                                    </c:choose>
+                                </span>
+                                <span class="continue-info">
+                                    <span class="continue-title"><c:out value="${rb.title}"/></span>
+                                    <span class="continue-meta">
+                                        <c:choose>
+                                            <c:when test="${not empty rb.progress_chapter_title}">读到 <c:out value="${rb.progress_chapter_title}"/> · </c:when>
+                                            <c:otherwise>已读 </c:otherwise>
+                                        </c:choose>${rb.progress_percent_text}%
+                                    </span>
+                                    <span class="continue-bar"><span style="width: ${rb.progress_percent_text}%"></span></span>
+                                </span>
+                            </a>
+                        </c:forEach>
+                    </div>
+                </c:otherwise>
+            </c:choose>
+        </section>
+
+        <section class="zone">
+            <div class="zone-head">
+                <h2 class="zone-title">快捷入口</h2>
+            </div>
+            <div class="rail-links">
+                <c:if test="${canManage}">
+                    <a class="rail-link" href="${ctx}/books/new">新增图书</a>
+                </c:if>
+                <a class="rail-link" href="${ctx}/books/fulltext">搜正文</a>
+                <a class="rail-link" href="${ctx}/books/random">随便看看</a>
+            </div>
+        </section>
+    </aside>
+
+    <main class="shelf-main">
 <div class="shelf-head">
     <h2 class="zone-title">我的书架</h2>
     <div class="shelf-tools">
@@ -181,6 +241,41 @@
         </c:forEach>
     </div>
 </c:if>
+    </main>
+
+    <aside class="shelf-rail shelf-rail-right">
+        <section class="zone">
+            <div class="zone-head">
+                <h2 class="zone-title">年度目标</h2>
+            </div>
+            <c:choose>
+                <c:when test="${not empty overview}">
+                    <div class="rail-goal">
+                        <span class="rail-goal-value">${overview.finished_this_year}<span class="rail-goal-total"> 本</span></span>
+                        <span class="rail-goal-label">今年读完</span>
+                        <c:if test="${overview.year_goal > 0}">
+                            <c:set var="goalPercent"
+                                   value="${overview.finished_this_year >= overview.year_goal ? 100 : (overview.finished_this_year * 100 / overview.year_goal)}"/>
+                            <span class="goal-bar"><span style="width: ${goalPercent}%"></span></span>
+                            <span class="rail-goal-text">目标 ${overview.year_goal} 本 · 完成 ${goalPercent}%</span>
+                        </c:if>
+                    </div>
+                    <c:choose>
+                        <c:when test="${overview.year_goal > 0}">
+                            <a class="rail-link" href="${ctx}/books/stats">查看阅读统计</a>
+                        </c:when>
+                        <c:otherwise>
+                            <a class="rail-link" href="${ctx}/books/stats">设置年度目标</a>
+                        </c:otherwise>
+                    </c:choose>
+                </c:when>
+                <c:otherwise>
+                    <p class="rail-empty">还没有阅读数据</p>
+                </c:otherwise>
+            </c:choose>
+        </section>
+    </aside>
+</div>
 
 <script>
     (function () {

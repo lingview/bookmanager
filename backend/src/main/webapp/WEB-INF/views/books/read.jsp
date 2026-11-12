@@ -71,7 +71,8 @@
                     <div class="toc-notes">
                         <c:forEach var="n" items="${notes}">
                             <div class="toc-note">
-                                <a href="${ctx}/books/${book.id}/read?chapterId=${n.chapter_id}">
+                                <a href="${ctx}/books/${book.id}/read?chapterId=${n.chapter_id}&amp;note=${n.id}"
+                                   data-note-id="${n.id}">
                                     <c:if test="${not empty n.quote_text}">
                                         <span class="note-quote">“<c:out value="${n.quote_text}"/>”</span>
                                     </c:if>
@@ -128,7 +129,7 @@
                 </button>
                 <button type="button" class="rail-btn" id="lineToggle" title="调整行距">
                     <span class="rail-icon">≡</span>
-                    <span class="rail-text" id="lineLabel">行距</span>
+                    <span class="rail-text" id="lineLabel">默认</span>
                 </button>
                 <button type="button" class="rail-btn" id="widthToggle" title="调整页宽">
                     <span class="rail-icon">↔</span>
@@ -136,8 +137,10 @@
                 </button>
             </div>
             <div class="rail-group">
-                <button type="button" class="rail-btn" id="addBookmark" title="在当前位置加书签">
-                    <span class="rail-icon">☆</span>
+                <button type="button" class="rail-btn ${not empty currentBookmark ? 'bookmarked' : ''}"
+                        id="addBookmark" data-bookmark-id="${currentBookmark.id}"
+                        title="${not empty currentBookmark ? '取消本章书签' : '收藏本章书签'}">
+                    <span class="rail-icon" id="bookmarkIcon">${not empty currentBookmark ? '★' : '☆'}</span>
                     <span class="rail-text">书签</span>
                 </button>
                 <button type="button" class="rail-btn" id="toggleScroll" title="自动滚动">
@@ -215,8 +218,8 @@
         <button type="button" class="mobile-btn" id="mobileTocBtn">
             <span class="mobile-icon">☰</span><span>目录</span>
         </button>
-        <button type="button" class="mobile-btn" id="mobileBookmarkBtn">
-            <span class="mobile-icon">☆</span><span>书签</span>
+        <button type="button" class="mobile-btn ${not empty currentBookmark ? 'bookmarked' : ''}" id="mobileBookmarkBtn">
+            <span class="mobile-icon" id="mobileBookmarkIcon">${not empty currentBookmark ? '★' : '☆'}</span><span>书签</span>
         </button>
         <button type="button" class="mobile-btn" id="mobileSettingsBtn">
             <span class="mobile-icon">⚙</span><span>设置</span>
@@ -267,6 +270,9 @@
 
     <input type="hidden" id="csrfTokenHolder" value="<c:out value='${csrfToken}'/>">
     <input type="hidden" id="progressMeta" data-book-id="${book.id}" data-chapter-id="${chapter.id}"
+           data-chapter-title="<c:out value='${chapter.title}'/>"
+           data-chapter-url="${ctx}/books/${book.id}/read?chapterId=${chapter.id}"
+           data-focus-quote="<c:out value='${focusNote.quote_text}'/>"
            data-ctx="<c:out value='${ctx}'/>" data-restore="${restorePercent}">
     <c:if test="${not empty prevChapter}">
         <input type="hidden" id="prevChapterUrl" value="${ctx}/books/${book.id}/read?chapterId=${prevChapter.id}">
@@ -348,7 +354,7 @@
             var THEMES = ['light', 'sepia'];
             var THEME_LABELS = ['纸张', '护眼'];
             var LINE_HEIGHTS = ['1.9', '1.6', '2.2'];
-            var LINE_LABELS = ['行距', '紧凑', '宽松'];
+            var LINE_LABELS = ['默认', '紧凑', '宽松'];
 
             var themeLabel = document.getElementById('themeLabel');
             var lineLabel = document.getElementById('lineLabel');
@@ -635,11 +641,93 @@
             }
 
             var addBtn = document.getElementById('addBookmark');
-            addBtn.addEventListener('click', function () {
+            var mobileBookmarkBtn = document.getElementById('mobileBookmarkBtn');
+            var bookmarkId = addBtn.getAttribute('data-bookmark-id') || '';
+            var chapterTitle = meta.getAttribute('data-chapter-title') || '';
+            var chapterUrl = meta.getAttribute('data-chapter-url') || '';
+
+            function setBookmarked(on, id) {
+                bookmarkId = on ? String(id || '') : '';
+                addBtn.setAttribute('data-bookmark-id', bookmarkId);
+                addBtn.classList.toggle('bookmarked', !!on);
+                addBtn.title = on ? '取消本章书签' : '收藏本章书签';
+                var icon = document.getElementById('bookmarkIcon');
+                if (icon) icon.textContent = on ? '★' : '☆';
+                var mobileIcon = document.getElementById('mobileBookmarkIcon');
+                if (mobileIcon) mobileIcon.textContent = on ? '★' : '☆';
+                if (mobileBookmarkBtn) mobileBookmarkBtn.classList.toggle('bookmarked', !!on);
+            }
+
+            function ensureBookmarkList() {
+                var panel = document.getElementById('tocPanelBookmarks');
+                if (!panel) return null;
+                var list = panel.querySelector('.toc-bookmarks');
+                if (!list) {
+                    list = document.createElement('div');
+                    list.className = 'toc-bookmarks';
+                    var empty = panel.querySelector('.muted');
+                    if (empty) panel.removeChild(empty);
+                    panel.appendChild(list);
+                }
+                return list;
+            }
+
+            function appendBookmarkRow(id, percent) {
+                var list = ensureBookmarkList();
+                if (!list) return;
+                var row = document.createElement('div');
+                row.className = 'toc-bookmark';
+                row.setAttribute('data-bookmark-row', id);
+                var link = document.createElement('a');
+                link.href = chapterUrl + '&scroll=' + percent;
+                link.textContent = chapterTitle + ' · ' + percent + '%';
+                var del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'bookmark-del';
+                del.setAttribute('data-id', id);
+                del.title = '删除书签';
+                del.textContent = '×';
+                row.appendChild(link);
+                row.appendChild(del);
+                list.insertBefore(row, list.firstChild);
+            }
+
+            function removeBookmarkRow(id) {
+                var btn = document.querySelector('.bookmark-del[data-id="' + id + '"]');
+                var row = btn ? btn.closest('.toc-bookmark')
+                    : document.querySelector('.toc-bookmark[data-bookmark-row="' + id + '"]');
+                if (row && row.parentNode) row.parentNode.removeChild(row);
+            }
+
+            function deleteBookmark(id, btn) {
+                var params = new URLSearchParams();
+                params.append('csrfToken', token);
+                if (btn) btn.disabled = true;
+                fetch(ctx + '/books/' + bookId + '/bookmarks/' + id + '/delete', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-Token': token },
+                    body: params
+                }).then(function (r) { return r.json(); }).then(function (res) {
+                    if (res.code !== 200) {
+                        alert(res.message || '删除失败');
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+                    removeBookmarkRow(id);
+                    if (String(id) === bookmarkId) setBookmarked(false);
+                }).catch(function () {
+                    alert('删除失败');
+                    if (btn) btn.disabled = false;
+                });
+            }
+
+            function addBookmark() {
+                var percent = Math.round(currentPercent() * 10) / 10;
                 var params = new URLSearchParams();
                 params.append('csrfToken', token);
                 params.append('chapter_id', chapterId);
-                params.append('scroll_percent', String(currentPercent()));
+                params.append('scroll_percent', String(percent));
                 addBtn.disabled = true;
                 fetch(ctx + '/books/' + bookId + '/bookmarks', {
                     method: 'POST',
@@ -651,31 +739,28 @@
                         alert(res.message || '添加失败');
                         return;
                     }
-                    window.location.reload();
+                    setBookmarked(true, res.data);
+                    appendBookmarkRow(res.data, percent);
                 }).catch(function () {
                     alert('添加失败');
                 }).then(function () {
                     addBtn.disabled = false;
                 });
+            }
+
+            addBtn.addEventListener('click', function () {
+                if (bookmarkId) {
+                    deleteBookmark(bookmarkId, null);
+                } else {
+                    addBookmark();
+                }
             });
 
-            Array.prototype.slice.call(document.querySelectorAll('.bookmark-del')).forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var params = new URLSearchParams();
-                    params.append('csrfToken', token);
-                    fetch(ctx + '/books/' + bookId + '/bookmarks/' + btn.getAttribute('data-id') + '/delete', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { 'X-CSRF-Token': token },
-                        body: params
-                    }).then(function (r) { return r.json(); }).then(function (res) {
-                        if (res.code === 200) {
-                            window.location.reload();
-                        } else {
-                            alert(res.message || '删除失败');
-                        }
-                    });
-                });
+            document.addEventListener('click', function (e) {
+                var del = e.target.closest('.bookmark-del');
+                if (!del) return;
+                e.preventDefault();
+                deleteBookmark(del.getAttribute('data-id'), del);
             });
 
             var searchForm = document.getElementById('tocSearchForm');
@@ -953,6 +1038,70 @@
                     if (target) target.classList.add('active');
                 });
             });
+        })();
+    </script>
+    <script>
+        (function () {
+            var toc = document.getElementById('tocDrawer');
+            var current = document.querySelector('#tocPanelChapters a.current');
+            if (!toc || !current) return;
+            var tocRect = toc.getBoundingClientRect();
+            var linkRect = current.getBoundingClientRect();
+            var target = toc.scrollTop + (linkRect.top - tocRect.top)
+                - (toc.clientHeight - linkRect.height) / 2;
+            toc.scrollTop = Math.max(0, target);
+        })();
+    </script>
+    <script>
+        (function () {
+            var meta = document.getElementById('progressMeta');
+            var content = document.getElementById('chapterContent');
+            if (!meta || !content) return;
+            var quote = meta.getAttribute('data-focus-quote') || '';
+            if (!quote.trim()) return;
+
+            function normalize(text) {
+                var out = '';
+                var map = [];
+                var lastSpace = false;
+                for (var i = 0; i < text.length; i++) {
+                    var ch = text.charAt(i);
+                    if (/\s/.test(ch)) {
+                        if (out.length && !lastSpace) {
+                            out += ' ';
+                            map.push(i);
+                        }
+                        lastSpace = true;
+                    } else {
+                        out += ch;
+                        map.push(i);
+                        lastSpace = false;
+                    }
+                }
+                return { text: out, map: map };
+            }
+
+            var source = normalize(content.textContent);
+            var needle = normalize(quote).text.trim();
+            var index = needle ? source.text.indexOf(needle) : -1;
+            if (index < 0) return;
+
+            var start = source.map[index];
+            var end = source.map[index + needle.length - 1] + 1;
+            var textNode = content.firstChild;
+            if (!textNode || textNode.nodeType !== 3) return;
+
+            var range = document.createRange();
+            range.setStart(textNode, start);
+            range.setEnd(textNode, end);
+            var mark = document.createElement('mark');
+            mark.className = 'note-focus';
+            try {
+                range.surroundContents(mark);
+            } catch (e) {
+                return;
+            }
+            mark.scrollIntoView({ block: 'center' });
         })();
     </script>
 </c:if>
