@@ -7,7 +7,14 @@
 
 <p class="muted" style="margin-bottom: 16px;">为账号分配角色。角色权限决定可访问的功能；拥有 ADMIN 角色的账号默认拥有全部权限。</p>
 
-<c:if test="${canManageUsers}">
+<div class="sub-tabs">
+    <a class="sub-tab ${activeTab == 'users' ? 'active' : ''}" href="${ctx}/admin/users?tab=users">用户</a>
+    <c:if test="${showRolesMenu}">
+        <a class="sub-tab ${activeTab == 'roles' ? 'active' : ''}" href="${ctx}/admin/users?tab=roles">角色</a>
+    </c:if>
+</div>
+
+<c:if test="${canManageUsers and activeTab == 'users'}">
 <div class="card" style="margin-bottom: 18px;">
     <div class="section-title">注册设置</div>
     <form class="toolbar" action="${ctx}/admin/users/register-settings" method="post" style="margin: 0;">
@@ -29,12 +36,12 @@
 </div>
 </c:if>
 
-<c:if test="${showRolesMenu}">
+<c:if test="${showRolesMenu and activeTab == 'roles'}">
     <div class="card" style="margin-bottom: 18px;">
         <div class="zone-head" style="margin-bottom: 12px;">
             <div class="section-title" style="margin: 0;">角色管理</div>
             <c:if test="${canManageRoles}">
-                <a class="btn small ghost" href="${ctx}/admin/users?editRole=0">新建角色</a>
+                <button type="button" class="btn small ghost" id="roleNewBtn">新建角色</button>
             </c:if>
         </div>
         <div class="table-scroll">
@@ -62,7 +69,13 @@
                         <c:if test="${canManageRoles}">
                             <td>
                                 <div class="toolbar" style="margin: 0; gap: 8px;">
-                                    <a class="btn small ghost" href="${ctx}/admin/users?editRole=${r.id}">编辑</a>
+                                    <button type="button" class="btn small ghost role-edit"
+                                            data-id="${r.id}"
+                                            data-name="<c:out value='${r.name}'/>"
+                                            data-code="<c:out value='${r.code}'/>"
+                                            data-desc="<c:out value='${r.description}'/>"
+                                            data-status="${r.status}"
+                                            data-perms="${r.permission_ids}">编辑</button>
                                     <c:if test="${r.code != 'ADMIN' and r.user_count == 0}">
                                         <form action="${ctx}/admin/users/roles/${r.id}/delete" method="post"
                                               onsubmit="return confirm('确定删除该角色吗？');">
@@ -79,64 +92,57 @@
             </table>
         </div>
 
-        <c:if test="${not empty editRoleId}">
-            <div class="role-editor">
-                <div class="section-title">
-                    ${editRoleId > 0 ? '编辑角色' : '新建角色'}
+
+        <div class="admin-modal-mask" id="roleModal" hidden>
+            <div class="admin-modal">
+                <div class="zone-head" style="margin-bottom: 12px;">
+                    <div class="section-title" id="roleModalTitle" style="margin: 0;">新建角色</div>
+                    <button type="button" class="sheet-close" data-close="roleModal">×</button>
                 </div>
-                <form action="${ctx}/admin/users/roles/save" method="post">
+                <form id="roleForm" action="${ctx}/admin/users/roles/save" method="post">
                     <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
-                    <c:if test="${not empty editRole}">
-                        <input type="hidden" name="id" value="${editRole.id}">
-                    </c:if>
-                    <div class="toolbar" style="margin-bottom: 10px;">
-                        <input class="input" type="text" name="name" placeholder="角色名称" maxlength="100" required
-                               value="<c:out value='${editRole.name}'/>" style="width: 200px;">
-                        <input class="input" type="text" name="code" placeholder="角色编码（创建后不可改）" maxlength="50"
-                               value="<c:out value='${editRole.code}'/>" style="width: 220px;"
-                               ${editRoleId > 0 ? 'readonly' : 'required'}>
-                        <select class="select" name="status" style="width: 100px;">
-                            <option value="1" ${empty editRole or editRole.status != 0 ? 'selected' : ''}>启用</option>
-                            <option value="0" ${not empty editRole and editRole.status == 0 ? 'selected' : ''}>停用</option>
+                    <input type="hidden" name="id" id="roleId">
+                    <div class="toolbar" style="margin: 0 0 10px;">
+                        <input class="input" type="text" id="roleName" name="name" placeholder="角色名称"
+                               maxlength="100" required style="width: 200px;">
+                        <input class="input" type="text" id="roleCode" name="code" placeholder="角色编码（创建后不可改）"
+                               maxlength="50" required style="width: 220px;">
+                        <select class="select" id="roleStatus" name="status" style="width: 100px;">
+                            <option value="1">启用</option>
+                            <option value="0">停用</option>
                         </select>
                     </div>
-                    <input class="input" type="text" name="description" placeholder="角色描述（可选）" maxlength="255"
-                           value="<c:out value='${editRole.description}'/>" style="width: 100%; margin-bottom: 12px;">
-
-                    <c:choose>
-                        <c:when test="${not empty editRole and editRole.code == 'ADMIN'}">
-                            <p class="muted">管理员角色固定拥有全部权限，权限不可修改。</p>
-                        </c:when>
-                        <c:otherwise>
-                            <div class="role-perm-groups">
-                                <c:forEach var="entry" items="${permissionGroups}">
-                                    <div class="role-perm-group">
-                                        <div class="role-perm-title">${moduleLabels[entry.key]}</div>
-                                        <div class="role-perm-items">
-                                            <c:forEach var="p" items="${entry.value}">
-                                                <label class="choice">
-                                                    <input type="checkbox" name="permissionIds" value="${p.id}"
-                                                           ${editPermissionIds.contains(p.id) ? 'checked' : ''}>
-                                                    <c:out value="${p.name}"/>
-                                                </label>
-                                            </c:forEach>
-                                        </div>
-                                    </div>
-                                </c:forEach>
+                    <input class="input" type="text" id="roleDesc" name="description"
+                           placeholder="角色描述（可选）" maxlength="255" style="width: 100%; margin-bottom: 12px;">
+                    <p class="muted" id="roleAdminNote" hidden>管理员角色固定拥有全部权限，权限不可修改。</p>
+                    <div class="role-perm-groups" id="rolePermGroups">
+                        <c:forEach var="entry" items="${permissionGroups}">
+                            <div class="role-perm-group">
+                                <div class="role-perm-title">${moduleLabels[entry.key]}</div>
+                                <div class="role-perm-items">
+                                    <c:forEach var="p" items="${entry.value}">
+                                        <label class="choice">
+                                            <input type="checkbox" name="permissionIds" value="${p.id}"
+                                                   class="role-perm-check">
+                                            <c:out value="${p.name}"/>
+                                        </label>
+                                    </c:forEach>
+                                </div>
                             </div>
-                        </c:otherwise>
-                    </c:choose>
-
+                        </c:forEach>
+                    </div>
                     <div class="toolbar" style="margin: 14px 0 0; justify-content: flex-end;">
-                        <a class="btn ghost" href="${ctx}/admin/users">取消</a>
+                        <button type="button" class="btn ghost" data-close="roleModal">取消</button>
                         <button type="submit" class="btn">保存角色</button>
                     </div>
                 </form>
             </div>
-        </c:if>
+        </div>
+
     </div>
 </c:if>
 
+<c:if test="${activeTab == 'users'}">
 <c:choose>
     <c:when test="${empty pageResult.data}">
         <p class="empty">还没有用户</p>
@@ -166,19 +172,8 @@
                     <td><c:out value="${u.phone}"/></td>
                     <td>
                         <c:choose>
-                            <c:when test="${canManageUsers}">
-                                <form class="toolbar" style="margin: 0; gap: 10px;"
-                                      action="${ctx}/admin/users/${u.id}/roles" method="post">
-                                    <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
-                                    <c:forEach var="role" items="${roles}">
-                                        <label class="choice">
-                                            <input type="checkbox" name="roleIds" value="${role.id}"
-                                                   ${u.role_ids.contains(role.id) ? 'checked' : ''}>
-                                            <c:out value="${role.name}"/>
-                                        </label>
-                                    </c:forEach>
-                                    <button type="submit" class="btn small ghost">保存</button>
-                                </form>
+                            <c:when test="${empty u.roles}">
+                                <span class="muted">未分配</span>
                             </c:when>
                             <c:otherwise>
                                 <c:forEach var="role" items="${u.roles}">
@@ -186,6 +181,13 @@
                                 </c:forEach>
                             </c:otherwise>
                         </c:choose>
+                        <c:if test="${canManageUsers}">
+                            <button type="button" class="btn small ghost user-role-btn" style="margin-left: 8px;"
+                                    data-user-id="${u.id}"
+                                    data-username="<c:out value='${u.username}'/>"
+                                    data-role-ids="<c:forEach var='rid' items='${u.role_ids}' varStatus='s'>${rid}${s.last ? '' : ','}</c:forEach>">分配角色</button>
+                        </c:if>
+                    </td>
                     </td>
                     <td class="muted">${u.create_time}</td>
                     <c:if test="${canManageUsers}">
@@ -210,5 +212,119 @@
 <c:if test="${pageResult.total_pages > 1}">
     <%@ include file="../common/pagination.jspf" %>
 </c:if>
+
+<div class="admin-modal-mask" id="userRoleModal" hidden>
+    <div class="admin-modal" style="width: min(420px, 100%);">
+        <div class="zone-head" style="margin-bottom: 12px;">
+            <div class="section-title" style="margin: 0;">分配角色 · <span id="userRoleName"></span></div>
+            <button type="button" class="sheet-close" data-close="userRoleModal">×</button>
+        </div>
+        <form id="userRoleForm" method="post">
+            <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
+            <div class="user-role-list">
+                <c:forEach var="role" items="${roles}">
+                    <label class="choice">
+                        <input type="checkbox" name="roleIds" value="${role.id}" class="user-role-check">
+                        <c:out value="${role.name}"/>
+                    </label>
+                </c:forEach>
+            </div>
+            <div class="toolbar" style="margin: 16px 0 0; justify-content: flex-end;">
+                <button type="button" class="btn ghost" data-close="userRoleModal">取消</button>
+                <button type="submit" class="btn">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+</c:if>
+
+<script>
+    (function () {
+        var ctx = '${ctx}';
+        var roleModal = document.getElementById('roleModal');
+        var roleNewBtn = document.getElementById('roleNewBtn');
+
+        function openModal(id) {
+            var mask = document.getElementById(id);
+            if (mask) mask.hidden = false;
+        }
+
+        function closeModal(id) {
+            var mask = document.getElementById(id);
+            if (mask) mask.hidden = true;
+        }
+
+        document.querySelectorAll('[data-close]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                closeModal(btn.getAttribute('data-close'));
+            });
+        });
+        document.querySelectorAll('.admin-modal-mask').forEach(function (mask) {
+            mask.addEventListener('click', function (e) {
+                if (e.target === mask) mask.hidden = true;
+            });
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('.admin-modal-mask').forEach(function (mask) {
+                mask.hidden = true;
+            });
+        });
+
+        function openRole(data) {
+            if (!roleModal) return;
+            var form = document.getElementById('roleForm');
+            form.reset();
+            document.getElementById('roleId').value = data ? data.id : '';
+            document.getElementById('roleModalTitle').textContent = data ? '编辑角色' : '新建角色';
+            document.getElementById('roleName').value = data ? (data.name || '') : '';
+            var code = document.getElementById('roleCode');
+            code.value = data ? (data.code || '') : '';
+            code.readOnly = !!data;
+            code.required = !data;
+            document.getElementById('roleDesc').value = data ? (data.desc || '') : '';
+            document.getElementById('roleStatus').value = data ? String(data.status) : '1';
+            var admin = data && data.code === 'ADMIN';
+            document.getElementById('roleAdminNote').hidden = !admin;
+            document.getElementById('rolePermGroups').hidden = !!admin;
+            var perms = data && data.perms ? String(data.perms).split(',') : [];
+            roleModal.querySelectorAll('.role-perm-check').forEach(function (box) {
+                box.checked = perms.indexOf(box.value) >= 0;
+                box.disabled = !!admin;
+            });
+            openModal('roleModal');
+        }
+
+        if (roleNewBtn) {
+            roleNewBtn.addEventListener('click', function () { openRole(null); });
+        }
+        document.querySelectorAll('.role-edit').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openRole({
+                    id: btn.getAttribute('data-id'),
+                    name: btn.getAttribute('data-name'),
+                    code: btn.getAttribute('data-code'),
+                    desc: btn.getAttribute('data-desc'),
+                    status: btn.getAttribute('data-status'),
+                    perms: btn.getAttribute('data-perms')
+                });
+            });
+        });
+
+        document.querySelectorAll('.user-role-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var userId = btn.getAttribute('data-user-id');
+                document.getElementById('userRoleName').textContent = btn.getAttribute('data-username') || '';
+                var form = document.getElementById('userRoleForm');
+                form.action = ctx + '/admin/users/' + userId + '/roles';
+                var ids = (btn.getAttribute('data-role-ids') || '').split(',').filter(Boolean);
+                document.querySelectorAll('#userRoleModal .user-role-check').forEach(function (box) {
+                    box.checked = ids.indexOf(box.value) >= 0;
+                });
+                openModal('userRoleModal');
+            });
+        });
+    })();
+</script>
 
 <%@ include file="../common/foot.jspf" %>

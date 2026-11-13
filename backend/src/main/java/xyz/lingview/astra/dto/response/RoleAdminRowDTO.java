@@ -11,4 +11,5 @@ public class RoleAdminRowDTO {
     private Byte status;
     private Integer permission_count;
     private Integer user_count;
+    private String permission_ids;
 }

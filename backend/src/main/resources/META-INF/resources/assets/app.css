@@ -1124,6 +1124,21 @@
         html.theme-dark .shelf-tab:hover { color: #79bbff; }
         html.theme-dark .shelf-tab.active { color: #79bbff; border-color: #79bbff; }
 
+        .sub-tabs { display: flex; gap: 20px; margin: 0 0 16px; border-bottom: 1px solid #ebeef5; }
+        .sub-tab {
+            padding: 6px 0 10px;
+            color: #606266;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .sub-tab:hover { color: #409eff; text-decoration: none; }
+        .sub-tab.active { color: #409eff; border-color: #409eff; font-weight: 600; }
+        html.theme-dark .sub-tabs { border-color: #2f2f35; }
+        html.theme-dark .sub-tab { color: #a8a9ad; }
+        html.theme-dark .sub-tab:hover { color: #79bbff; }
+        html.theme-dark .sub-tab.active { color: #79bbff; border-color: #79bbff; }
+
         .choice-row { display: flex; flex-wrap: wrap; gap: 16px; }
         .choice { display: inline-flex; align-items: center; gap: 5px; color: #606266; cursor: pointer; }
         html.theme-dark .choice { color: #a8a9ad; }
@@ -1362,11 +1377,40 @@
             overflow: auto;
             padding: 4px 2px;
         }
+        .role-perm-groups[hidden] { display: none; }
         .role-perm-group { display: flex; flex-direction: column; gap: 6px; }
         .role-perm-title { font-size: 12px; color: #909399; }
         .role-perm-items { display: flex; flex-wrap: wrap; gap: 6px 14px; }
         html.theme-dark .role-editor { border-color: #2f2f35; }
         html.theme-dark .role-perm-title { color: #8a8b90; }
+
+        .admin-modal-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 150;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(0, 0, 0, .45);
+        }
+        .admin-modal-mask[hidden] { display: none; }
+        .admin-modal {
+            width: min(640px, 100%);
+            max-height: 85vh;
+            overflow: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+        }
+        .user-role-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow: auto;
+        }
+        html.theme-dark .admin-modal { background: #232328; }
         html.theme-dark .picker { background: #232328; }
         html.theme-dark .picker-head,
         html.theme-dark .picker-foot { border-color: #2f2f35; }

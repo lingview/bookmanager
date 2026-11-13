@@ -13,6 +13,8 @@ public interface RoleAdminService {
 
     List<Permission> listPermissions();
 
+    List<Permission> listAssignablePermissions();
+
     Role getRole(Integer id);
 
     List<Integer> getPermissionIds(Integer roleId);

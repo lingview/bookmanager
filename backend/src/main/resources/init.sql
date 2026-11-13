@@ -166,6 +166,26 @@ CREATE TABLE `role_permission`  (
 -- ----------------------------
 -- Records of role_permission
 -- ----------------------------
+INSERT INTO `permission` (`code`, `name`, `module`, `create_time`) VALUES
+('book:upload', '图书上传（新增图书、导入正文）', 'book', CURRENT_TIMESTAMP),
+('book:edit', '图书编辑（信息、封面、章节）', 'book', CURRENT_TIMESTAMP),
+('book:delete', '图书删除', 'book', CURRENT_TIMESTAMP),
+('book:batch', '图书批量操作', 'book', CURRENT_TIMESTAMP),
+('category:manage', '分类管理', 'book', CURRENT_TIMESTAMP),
+('user:view', '查看用户', 'user', CURRENT_TIMESTAMP),
+('user:manage', '用户管理（删除、分配角色、注册设置）', 'user', CURRENT_TIMESTAMP),
+('role:view', '查看角色', 'role', CURRENT_TIMESTAMP),
+('role:manage', '角色与权限管理', 'role', CURRENT_TIMESTAMP);
+UPDATE `permission` SET `name` = '分类管理菜单', `module` = 'menus' WHERE `code` = 'content:menus';
+UPDATE `permission` SET `name` = '用户管理菜单', `module` = 'menus' WHERE `code` = 'user:menus';
+UPDATE `permission` SET `name` = '角色管理菜单', `module` = 'menus' WHERE `code` = 'role:menus';
+
+INSERT INTO `role_permission` (`role_id`, `permission_id`)
+SELECT r.id, p.id FROM `role` r JOIN `permission` p
+WHERE r.code = 'ADMIN' AND p.code IN
+('book:upload', 'book:edit', 'book:delete', 'book:batch', 'category:manage',
+ 'user:view', 'user:manage', 'role:view', 'role:manage', 'user:menus', 'role:menus', 'content:menus');
+
 INSERT INTO `role_permission` VALUES (1, 4);
 INSERT INTO `role_permission` VALUES (1, 5);
 INSERT INTO `role_permission` VALUES (1, 9);

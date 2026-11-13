@@ -5,6 +5,7 @@
 <c:set var="navActive" value="categories"/>
 <%@ include file="../common/head.jspf" %>
 
+<c:if test="${canManageCategories}">
 <div class="card" style="margin-bottom: 20px;">
     <div class="section-title">新增分类</div>
     <form class="toolbar" style="margin: 0;" action="${ctx}/books/categories" method="post">
@@ -20,6 +21,7 @@
     </c:if>
     <p class="form-hint">删除分类前请先移除该分类下的图书，否则会被拒绝</p>
 </div>
+</c:if>
 
 <c:choose>
     <c:when test="${empty categories}">
@@ -32,7 +34,9 @@
             <tr>
                 <th style="width: 80px;">ID</th>
                 <th>分类名称 / 排序</th>
-                <th style="width: 120px;">操作</th>
+                <c:if test="${canManageCategories}">
+                    <th style="width: 120px;">操作</th>
+                </c:if>
             </tr>
             </thead>
             <tbody>
@@ -40,6 +44,8 @@
                 <tr>
                     <td>${cat.id}</td>
                     <td>
+                        <c:choose>
+                            <c:when test="${canManageCategories}">
                         <form class="toolbar" style="margin: 0; gap: 6px;"
                               action="${ctx}/books/categories/${cat.id}/edit" method="post">
                             <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
@@ -49,7 +55,14 @@
                                    value="${cat.sort_order}">
                             <button type="submit" class="btn small ghost">保存</button>
                         </form>
+                            </c:when>
+                            <c:otherwise>
+                                <c:out value="${cat.name}"/>
+                                <span class="muted">（排序 ${cat.sort_order}）</span>
+                            </c:otherwise>
+                        </c:choose>
                     </td>
+                    <c:if test="${canManageCategories}">
                     <td class="actions">
                         <form action="${ctx}/books/categories/${cat.id}/delete" method="post"
                               class="inline" onsubmit="return confirm('确定删除该分类吗？');">
@@ -57,6 +70,7 @@
                             <button type="submit" class="btn small danger">删除</button>
                         </form>
                     </td>
+                    </c:if>
                 </tr>
             </c:forEach>
             </tbody>

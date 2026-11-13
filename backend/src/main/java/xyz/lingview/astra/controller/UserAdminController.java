@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import xyz.lingview.astra.domain.Permission;
-import xyz.lingview.astra.domain.Role;
 import xyz.lingview.astra.dto.request.RoleFormDTO;
 import xyz.lingview.astra.security.CsrfTokenService;
 import xyz.lingview.astra.service.CurrentUserService;
@@ -51,14 +50,24 @@ public class UserAdminController {
 
     @GetMapping
     public String list(@RequestParam(defaultValue = "1") int page,
-                       @RequestParam(required = false) Integer editRole,
+                       @RequestParam(defaultValue = "users") String tab,
                        HttpSession session, Model model,
                        HttpServletResponse response) {
-        if (!canViewUsers()) {
+        String activeTab = "roles".equals(tab) ? "roles" : "users";
+        if ("roles".equals(activeTab)) {
+            if (!canViewRoleSection()) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return "error/403";
+            }
+        } else if (!canViewUsers()) {
+            if (canViewRoleSection()) {
+                return "redirect:/admin/users?tab=roles";
+            }
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return "error/403";
         }
         boolean admin = isAdmin();
+        model.addAttribute("activeTab", activeTab);
         model.addAttribute("pageResult", userAdminService.listUsers(page, 20));
         model.addAttribute("roles", userAdminService.listRoles());
         model.addAttribute("enableRegister", siteConfigService.getEnableRegister());
@@ -70,16 +79,9 @@ public class UserAdminController {
         model.addAttribute("canManageRoles", canManageRoles());
         model.addAttribute("showRolesMenu", canViewRoleSection());
         model.addAttribute("rolesWithStats", roleAdminService.listRolesWithStats());
-        model.addAttribute("permissions", roleAdminService.listPermissions());
-        model.addAttribute("permissionGroups", groupPermissions(roleAdminService.listPermissions()));
+        model.addAttribute("permissions", roleAdminService.listAssignablePermissions());
+        model.addAttribute("permissionGroups", groupPermissions(roleAdminService.listAssignablePermissions()));
         model.addAttribute("moduleLabels", moduleLabels());
-        if (editRole != null) {
-            Role role = editRole > 0 ? roleAdminService.getRole(editRole) : null;
-            model.addAttribute("editRoleId", editRole);
-            model.addAttribute("editRole", role);
-            model.addAttribute("editPermissionIds",
-                    role == null ? List.of() : roleAdminService.getPermissionIds(role.getId()));
-        }
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "admin/users";
     }
@@ -93,13 +95,24 @@ public class UserAdminController {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return "error/403";
         }
+        if (!isAdmin()) {
+            Integer adminRoleId = adminRoleId();
+            List<Integer> currentRoles = userAdminService.getUserRoleIds(id);
+            boolean touchesAdmin = adminRoleId != null
+                    && (currentRoles.contains(adminRoleId)
+                    || (roleIds != null && roleIds.contains(adminRoleId)));
+            if (touchesAdmin) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return "error/403";
+            }
+        }
         try {
             userAdminService.updateRoles(id, roleIds);
             redirectAttributes.addFlashAttribute("flashMessage", "角色已更新");
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?tab=users";
     }
 
     @PostMapping("/{id}/delete")
@@ -110,13 +123,20 @@ public class UserAdminController {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return "error/403";
         }
+        if (!isAdmin()) {
+            Integer adminRoleId = adminRoleId();
+            if (adminRoleId != null && userAdminService.getUserRoleIds(id).contains(adminRoleId)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return "error/403";
+            }
+        }
         try {
             userAdminService.deleteUser(id, currentUserService.getCurrentUsername());
             redirectAttributes.addFlashAttribute("flashMessage", "用户已删除");
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?tab=users";
     }
 
     @PostMapping("/register-settings")
@@ -134,7 +154,7 @@ public class UserAdminController {
                 roleId = Integer.valueOf(registerRoleId.trim());
             } catch (NumberFormatException e) {
                 redirectAttributes.addFlashAttribute("flashError", "默认角色无效");
-                return "redirect:/admin/users";
+                return "redirect:/admin/users?tab=users";
             }
         }
         if (siteConfigService.updateRegisterSettings(enableRegister, roleId)) {
@@ -142,7 +162,7 @@ public class UserAdminController {
         } else {
             redirectAttributes.addFlashAttribute("flashError", "注册设置保存失败");
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?tab=users";
     }
 
     @PostMapping("/roles/save")
@@ -160,7 +180,7 @@ public class UserAdminController {
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?tab=roles";
     }
 
     @PostMapping("/roles/{id}/delete")
@@ -177,7 +197,7 @@ public class UserAdminController {
         } catch (RuntimeException e) {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?tab=roles";
     }
 
     private Set<String> permissions() {
@@ -189,13 +209,21 @@ public class UserAdminController {
         return userAdminService.isAdmin(currentUserService.getCurrentUsername());
     }
 
+    private Integer adminRoleId() {
+        return userAdminService.listRoles().stream()
+                .filter(role -> "ADMIN".equalsIgnoreCase(role.getCode()))
+                .map(role -> role.getId())
+                .findFirst()
+                .orElse(null);
+    }
+
     private boolean canViewUsers() {
         if (isAdmin()) {
             return true;
         }
         Set<String> codes = permissions();
-        return codes.contains("user:menus") || codes.contains("system:user:management")
-                || codes.contains("role:menus") || codes.contains("system:role:management");
+        return codes.contains("user:menus") || codes.contains("user:view") || codes.contains("user:manage")
+                || codes.contains("system:user:management");
     }
 
     private boolean canViewRoleSection() {
@@ -203,15 +231,18 @@ public class UserAdminController {
             return true;
         }
         Set<String> codes = permissions();
-        return codes.contains("role:menus") || codes.contains("system:role:management");
+        return codes.contains("role:menus") || codes.contains("role:view") || codes.contains("role:manage")
+                || codes.contains("system:role:management");
     }
 
     private boolean canManageUsers() {
-        return isAdmin() || permissions().contains("system:user:management");
+        return isAdmin() || permissions().contains("user:manage")
+                || permissions().contains("system:user:management");
     }
 
     private boolean canManageRoles() {
-        return isAdmin() || permissions().contains("system:role:management");
+        return isAdmin() || permissions().contains("role:manage")
+                || permissions().contains("system:role:management");
     }
 
     private Map<String, List<Permission>> groupPermissions(List<Permission> permissions) {

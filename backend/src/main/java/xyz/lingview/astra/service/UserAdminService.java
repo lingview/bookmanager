@@ -12,6 +12,8 @@ public interface UserAdminService {
 
     List<Role> listRoles();
 
+    List<Integer> getUserRoleIds(Integer userId);
+
     void updateRoles(Integer userId, List<Integer> roleIds);
 
     void deleteUser(Integer userId, String currentUsername);

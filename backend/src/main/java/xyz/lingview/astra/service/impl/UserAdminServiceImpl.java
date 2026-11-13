@@ -65,6 +65,16 @@ public class UserAdminServiceImpl implements UserAdminService {
     }
 
     @Override
+    public List<Integer> getUserRoleIds(Integer userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return userRoleMapper.selectRolesByUserId(userId).stream()
+                .map(Role::getId)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public void updateRoles(Integer userId, List<Integer> roleIds) {
         if (userId == null) {

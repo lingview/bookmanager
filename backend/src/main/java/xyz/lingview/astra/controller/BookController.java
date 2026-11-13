@@ -42,7 +42,10 @@ import java.util.List;
 @RequestMapping("/books")
 public class BookController {
 
-    private static final String MANAGE_PERMISSION = "book:management";
+    private static final String[] MANAGE_PERMISSIONS = {
+            "book:upload", "book:edit", "book:delete", "book:batch",
+            "category:manage", "book:management"
+    };
 
     @Autowired
     private BookService bookService;
@@ -110,6 +113,7 @@ public class BookController {
             model.addAttribute("overview", bookStatsService.getPersonalOverview(userUuid));
         }
         model.addAttribute("canManage", canManage());
+        addBookPermissionFlags(model);
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/list";
     }
@@ -183,6 +187,7 @@ public class BookController {
         model.addAttribute("book", book);
         model.addAttribute("toc", bookChapterService.listAllChapters(id));
         model.addAttribute("canManage", canManage());
+        addBookPermissionFlags(model);
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/detail";
     }
@@ -449,6 +454,18 @@ public class BookController {
     private boolean canManage() {
         String username = currentUserService.getCurrentUsername();
         return username != null
-                && permissionCheckService.hasAnyPermission(username, new String[]{MANAGE_PERMISSION});
+                && permissionCheckService.hasAnyPermission(username, MANAGE_PERMISSIONS);
+    }
+
+    private void addBookPermissionFlags(Model model) {
+        model.addAttribute("canUploadBook", hasAny("book:upload", "book:management"));
+        model.addAttribute("canEditBook", hasAny("book:edit", "book:management"));
+        model.addAttribute("canDeleteBook", hasAny("book:delete", "book:management"));
+        model.addAttribute("canBatchBook", hasAny("book:batch", "book:management"));
+    }
+
+    private boolean hasAny(String... codes) {
+        String username = currentUserService.getCurrentUsername();
+        return username != null && permissionCheckService.hasAnyPermission(username, codes);
     }
 }

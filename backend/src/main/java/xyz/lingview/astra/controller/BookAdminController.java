@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import xyz.lingview.astra.annotation.RequiresPermission;
 import xyz.lingview.astra.common.ApiResponse;
@@ -39,7 +41,9 @@ import xyz.lingview.astra.service.BookChapterService;
 import xyz.lingview.astra.service.BookService;
 import xyz.lingview.astra.service.CoverSearchService;
 import xyz.lingview.astra.service.ImportPreviewService;
+import xyz.lingview.astra.service.CurrentUserService;
 import xyz.lingview.astra.service.UploadService;
+import xyz.lingview.astra.service.UserPermissionCheckService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,8 +53,6 @@ import java.util.Map;
 @Controller
 @RequestMapping("/books")
 public class BookAdminController {
-
-    private static final String MANAGE_PERMISSION = "book:management";
 
     @Autowired
     private BookService bookService;
@@ -65,6 +67,12 @@ public class BookAdminController {
     private CoverSearchService coverSearchService;
 
     @Autowired
+    private UserPermissionCheckService permissionCheckService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
+    @Autowired
     private ImportPreviewService importPreviewService;
 
     @Autowired
@@ -72,14 +80,14 @@ public class BookAdminController {
 
     // 新增图书表单
     @GetMapping("/new")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     public String newBookForm(HttpSession session, Model model) {
         return renderBookForm(model, session, null, null, new BookFormDTO(), null, null);
     }
 
     // 新增图书（可同时导入正文文件）
     @PostMapping
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     public String createBook(@Valid @ModelAttribute("bookForm") BookFormDTO form, BindingResult binding,
                              @RequestParam(value = "cover", required = false) MultipartFile cover,
                              @RequestParam(value = "bookFile", required = false) MultipartFile bookFile,
@@ -143,7 +151,7 @@ public class BookAdminController {
 
     // 上传文件并生成预览（不落库）
     @PostMapping("/import/preview")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<ImportPreviewDTO> createImportPreview(@RequestParam("file") MultipartFile file,
                                                              HttpSession session) {
@@ -156,7 +164,7 @@ public class BookAdminController {
 
     // 获取预览摘要与章节列表
     @GetMapping("/import/preview/{token}")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<ImportPreviewDTO> getImportPreview(@PathVariable String token, HttpSession session) {
         try {
@@ -168,7 +176,7 @@ public class BookAdminController {
 
     // 获取预览中某章正文
     @GetMapping("/import/preview/{token}/chapters/{index}")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<PreviewChapterContentDTO> getImportChapter(@PathVariable String token,
                                                                   @PathVariable int index,
@@ -182,7 +190,7 @@ public class BookAdminController {
 
     // 保存预览中某章的标题与正文
     @PostMapping("/import/preview/{token}/chapters/{index}")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<ImportPreviewDTO> saveImportChapter(@PathVariable String token,
                                                            @PathVariable int index,
@@ -198,7 +206,7 @@ public class BookAdminController {
 
     // 删除预览中的某章
     @PostMapping("/import/preview/{token}/chapters/{index}/delete")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<ImportPreviewDTO> deleteImportChapter(@PathVariable String token,
                                                              @PathVariable int index,
@@ -212,7 +220,7 @@ public class BookAdminController {
 
     // 放弃预览文件
     @PostMapping("/import/preview/{token}/discard")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:upload")
     @ResponseBody
     public ApiResponse<String> discardImportPreview(@PathVariable String token, HttpSession session) {
         importPreviewService.discard(token, session);
@@ -221,7 +229,7 @@ public class BookAdminController {
 
     // 编辑图书表单
     @GetMapping("/{id}/edit")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String editBookForm(@PathVariable Integer id, HttpSession session, Model model,
                                HttpServletResponse response) {
         BookViewDTO book = bookService.getBook(id, null);
@@ -245,7 +253,7 @@ public class BookAdminController {
 
     // 保存图书修改
     @PostMapping("/{id}/edit")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String updateBook(@PathVariable Integer id, @Valid @ModelAttribute("bookForm") BookFormDTO form,
                              BindingResult binding,
                              @RequestParam(value = "cover", required = false) MultipartFile cover,
@@ -264,7 +272,7 @@ public class BookAdminController {
 
     // 置顶/取消置顶
     @PostMapping("/{id}/pin")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String togglePin(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
         try {
             boolean pinned = bookService.togglePin(id);
@@ -277,7 +285,7 @@ public class BookAdminController {
 
     // 删除图书
     @PostMapping("/{id}/delete")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:delete")
     public String deleteBook(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
         try {
             bookService.deleteBook(id);
@@ -290,7 +298,7 @@ public class BookAdminController {
 
     // 章节管理页
     @GetMapping("/{id}/chapters")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String chapterList(@PathVariable Integer id,
                               @RequestParam(defaultValue = "1") int page,
                               HttpSession session, Model model, HttpServletResponse response) {
@@ -308,7 +316,7 @@ public class BookAdminController {
 
     // 新增章节表单
     @GetMapping("/{id}/chapters/new")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String newChapterForm(@PathVariable Integer id, HttpSession session, Model model,
                                  HttpServletResponse response) {
         if (bookService.getBook(id, null) == null) {
@@ -320,7 +328,7 @@ public class BookAdminController {
 
     // 新增章节
     @PostMapping("/{id}/chapters")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String createChapter(@PathVariable Integer id,
                                 @Valid @ModelAttribute("chapterForm") BookChapterFormDTO form,
                                 BindingResult binding, HttpSession session, Model model) {
@@ -337,7 +345,7 @@ public class BookAdminController {
 
     // 编辑章节表单
     @GetMapping("/{id}/chapters/{chapterId}/edit")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String editChapterForm(@PathVariable Integer id, @PathVariable Integer chapterId,
                                   HttpSession session, Model model, HttpServletResponse response) {
         BookChapter chapter = bookChapterService.getChapter(id, chapterId);
@@ -353,7 +361,7 @@ public class BookAdminController {
 
     // 保存章节修改
     @PostMapping("/{id}/chapters/{chapterId}/edit")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String updateChapter(@PathVariable Integer id, @PathVariable Integer chapterId,
                                 @Valid @ModelAttribute("chapterForm") BookChapterFormDTO form,
                                 BindingResult binding, HttpSession session, Model model) {
@@ -370,7 +378,7 @@ public class BookAdminController {
 
     // 删除章节
     @PostMapping("/{id}/chapters/{chapterId}/delete")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String deleteChapter(@PathVariable Integer id, @PathVariable Integer chapterId,
                                 RedirectAttributes redirectAttributes) {
         try {
@@ -384,7 +392,7 @@ public class BookAdminController {
 
     // 章节拖拽排序
     @PostMapping("/{id}/chapters/reorder")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     @ResponseBody
     public ApiResponse<String> reorderChapters(@PathVariable Integer id, @RequestBody @Valid ChapterOrderDTO dto) {
         try {
@@ -397,7 +405,7 @@ public class BookAdminController {
 
     // 批量导入章节
     @PostMapping("/{id}/chapters/import")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String importChapters(@PathVariable Integer id,
                                  @RequestParam("file") MultipartFile file,
                                  RedirectAttributes redirectAttributes) {
@@ -412,7 +420,7 @@ public class BookAdminController {
 
     // 重新导入正文（保留书籍信息与阅读数据，按章节标题迁移）
     @PostMapping("/{id}/reimport")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:edit")
     public String reimportChapters(@PathVariable Integer id,
                                    @RequestParam("bookFile") MultipartFile file,
                                    RedirectAttributes redirectAttributes) {
@@ -436,7 +444,7 @@ public class BookAdminController {
 
     // 书架批量操作
     @PostMapping("/batch")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission("book:batch")
     public String batch(@RequestParam(required = false) List<Integer> ids,
                         @RequestParam String action,
                         @RequestParam(required = false) Integer category_id,
@@ -446,6 +454,11 @@ public class BookAdminController {
         if (ids == null || ids.isEmpty()) {
             redirectAttributes.addFlashAttribute("flashError", "请先选择图书");
             return "redirect:/books";
+        }
+        if ("delete".equals(action)) {
+            requireAny("book:delete", "book:management");
+        } else if ("cover".equals(action)) {
+            requireAny("book:edit", "book:management");
         }
         try {
             switch (action) {
@@ -514,7 +527,7 @@ public class BookAdminController {
 
     // 搜索封面候选图
     @GetMapping("/cover-search")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:upload", "book:edit"})
     @ResponseBody
     public ApiResponse<List<CoverCandidateDTO>> coverSearch(@RequestParam String keyword,
                                                             @RequestParam(defaultValue = "12") int limit) {
@@ -523,7 +536,7 @@ public class BookAdminController {
 
     // 下载选中的封面图并入附件库
     @PostMapping("/cover-download")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:upload", "book:edit"})
     @ResponseBody
     public ApiResponse<Map<String, String>> coverDownload(@RequestParam String url, HttpServletRequest request) {
         return uploadService.storeImageFromUrl(request, url);
@@ -531,18 +544,19 @@ public class BookAdminController {
 
     // 分类管理页
     @GetMapping("/categories")
-    @RequiresPermission({"book:management", "content:menus"})
+    @RequiresPermission({"category:manage", "content:menus", "book:management"})
     public String categoryList(HttpSession session, Model model) {
         model.addAttribute("categories", bookService.listCategories());
         model.addAttribute("categoryForm", new BookCategoryFormDTO());
         model.addAttribute("canManage", true);
+        model.addAttribute("canManageCategories", canManageCategories());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/categories";
     }
 
     // 新增分类
     @PostMapping("/categories")
-    @RequiresPermission({"book:management", "content:menus"})
+    @RequiresPermission({"category:manage", "book:management"})
     public String createCategory(@Valid @ModelAttribute("categoryForm") BookCategoryFormDTO form,
                                  BindingResult binding, HttpSession session, Model model,
                                  RedirectAttributes redirectAttributes) {
@@ -550,6 +564,7 @@ public class BookAdminController {
             model.addAttribute("categories", bookService.listCategories());
             model.addAttribute("csrfToken", csrfTokenService.getToken(session));
             model.addAttribute("canManage", true);
+            model.addAttribute("canManageCategories", canManageCategories());
             model.addAttribute("errors", fieldErrors(binding));
             return "books/categories";
         }
@@ -564,7 +579,7 @@ public class BookAdminController {
 
     // 分类改名/调整排序
     @PostMapping("/categories/{categoryId}/edit")
-    @RequiresPermission({"book:management", "content:menus"})
+    @RequiresPermission({"category:manage", "book:management"})
     public String renameCategory(@PathVariable Integer categoryId,
                                  @RequestParam String name,
                                  @RequestParam(required = false) Integer sort_order,
@@ -580,7 +595,7 @@ public class BookAdminController {
 
     // 删除分类
     @PostMapping("/categories/{categoryId}/delete")
-    @RequiresPermission({"book:management", "content:menus"})
+    @RequiresPermission({"category:manage", "book:management"})
     public String deleteCategory(@PathVariable Integer categoryId, RedirectAttributes redirectAttributes) {
         try {
             bookService.deleteCategory(categoryId);
@@ -589,6 +604,20 @@ public class BookAdminController {
             redirectAttributes.addFlashAttribute("flashError", e.getMessage());
         }
         return "redirect:/books/categories";
+    }
+
+    private boolean canManageCategories() {
+        String username = currentUserService.getCurrentUsername();
+        return username != null
+                && permissionCheckService.hasAnyPermission(username,
+                        new String[]{"category:manage", "book:management"});
+    }
+
+    private void requireAny(String... codes) {
+        String username = currentUserService.getCurrentUsername();
+        if (username == null || !permissionCheckService.hasAnyPermission(username, codes)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "没有执行该操作的权限");
+        }
     }
 
     private String renderBookForm(Model model, HttpSession session, Integer bookId, String coverUrl,

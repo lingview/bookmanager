@@ -14,7 +14,10 @@ import xyz.lingview.astra.service.UserPermissionCheckService;
 @Controller
 public class ReadingPageController {
 
-    private static final String MANAGE_PERMISSION = "book:management";
+    private static final String[] MANAGE_PERMISSIONS = {
+            "book:upload", "book:edit", "book:delete", "book:batch",
+            "category:manage", "book:management"
+    };
 
     @Autowired
     private BookService bookService;
@@ -60,6 +63,6 @@ public class ReadingPageController {
     private boolean canManage() {
         String username = currentUserService.getCurrentUsername();
         return username != null
-                && permissionCheckService.hasAnyPermission(username, new String[]{MANAGE_PERMISSION});
+                && permissionCheckService.hasAnyPermission(username, MANAGE_PERMISSIONS);
     }
 }

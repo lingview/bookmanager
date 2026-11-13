@@ -20,6 +20,11 @@ public class RoleAdminServiceImpl implements RoleAdminService {
 
     private static final String ADMIN_CODE = "ADMIN";
 
+    private static final Set<String> ASSIGNABLE_CODES = Set.of(
+            "book:upload", "book:edit", "book:delete", "book:batch", "category:manage",
+            "user:view", "user:manage", "role:view", "role:manage",
+            "user:menus", "role:menus", "content:menus");
+
     @Autowired
     private RoleAdminMapper roleAdminMapper;
 
@@ -31,6 +36,13 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     @Override
     public List<Permission> listPermissions() {
         return roleAdminMapper.selectAllPermissions();
+    }
+
+    @Override
+    public List<Permission> listAssignablePermissions() {
+        return roleAdminMapper.selectAllPermissions().stream()
+                .filter(permission -> ASSIGNABLE_CODES.contains(permission.getCode()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -117,7 +129,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         if (permissionIds == null || permissionIds.isEmpty()) {
             return;
         }
-        Set<Integer> valid = roleAdminMapper.selectAllPermissions().stream()
+        Set<Integer> valid = listAssignablePermissions().stream()
                 .map(Permission::getId).collect(Collectors.toSet());
         for (Integer permissionId : new LinkedHashSet<>(permissionIds)) {
             if (permissionId != null && valid.contains(permissionId)) {

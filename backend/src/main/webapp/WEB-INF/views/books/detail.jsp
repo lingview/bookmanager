@@ -65,13 +65,15 @@
                     </c:when>
                 </c:choose>
 
-                <c:if test="${canManage}">
+                <c:if test="${canEditBook}">
                     <a class="btn ghost" href="${ctx}/books/${book.id}/edit">编辑</a>
                     <a class="btn ghost" href="${ctx}/books/${book.id}/chapters">管理章节</a>
                     <form action="${ctx}/books/${book.id}/pin" method="post" class="inline">
                         <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
                         <button type="submit" class="btn ghost">${book.pinned == 1 ? '取消置顶' : '置顶'}</button>
                     </form>
+                </c:if>
+                <c:if test="${canDeleteBook}">
                     <form action="${ctx}/books/${book.id}/delete" method="post" class="inline"
                           onsubmit="return confirm('确定删除这本书吗？');">
                         <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">

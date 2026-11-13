@@ -58,7 +58,7 @@
                 <h2 class="zone-title">快捷入口</h2>
             </div>
             <div class="rail-links">
-                <c:if test="${canManage}">
+                <c:if test="${canUploadBook}">
                     <a class="rail-link" href="${ctx}/books/new">新增图书</a>
                 </c:if>
                 <a class="rail-link" href="${ctx}/books/fulltext">搜正文</a>
@@ -85,13 +85,13 @@
             </svg>
             <c:if test="${hasFilter}"><span class="badge-dot"></span></c:if>
         </button>
-        <c:if test="${canManage}">
+        <c:if test="${canUploadBook}">
             <a class="btn small" href="${ctx}/books/new">新增图书</a>
         </c:if>
     </div>
 </div>
 
-<c:if test="${canManage}">
+<c:if test="${canBatchBook}">
     <form id="batchForm" class="batch-bar" action="${ctx}/books/batch" method="post">
         <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
         <label class="choice"><input type="checkbox" id="batchAll"> 全选</label>
@@ -105,10 +105,14 @@
         <button type="submit" class="btn small ghost" name="action" value="category">设为分类</button>
         <input class="input" type="text" name="tag" placeholder="标签" maxlength="50">
         <button type="submit" class="btn small ghost" name="action" value="tag">添加标签</button>
-        <button type="submit" class="btn small ghost" name="action" value="cover"
-                onclick="return confirm('为选中的书自动搜索并应用封面？单次最多处理 30 本。');">补封面</button>
-        <button type="submit" class="btn small danger" name="action" value="delete"
-                onclick="return confirm('确定删除选中的图书吗？关联章节和阅读数据会一并删除。');">删除</button>
+        <c:if test="${canEditBook}">
+            <button type="submit" class="btn small ghost" name="action" value="cover"
+                    onclick="return confirm('为选中的书自动搜索并应用封面？单次最多处理 30 本。');">补封面</button>
+        </c:if>
+        <c:if test="${canDeleteBook}">
+            <button type="submit" class="btn small danger" name="action" value="delete"
+                    onclick="return confirm('确定删除选中的图书吗？关联章节和阅读数据会一并删除。');">删除</button>
+        </c:if>
         <button type="button" class="btn small ghost" id="batchExit">取消</button>
     </form>
 </c:if>

@@ -37,18 +37,27 @@ public class AdminNavInterceptor implements HandlerInterceptor {
         request.setAttribute("isAdmin", admin);
         request.setAttribute("showUsersMenu", admin
                 || permissions.contains("user:menus")
+                || permissions.contains("user:view")
+                || permissions.contains("user:manage")
                 || permissions.contains("system:user:management")
                 || permissions.contains("role:menus")
+                || permissions.contains("role:view")
+                || permissions.contains("role:manage")
                 || permissions.contains("system:role:management"));
         request.setAttribute("showCategoriesMenu", admin
-                || permissions.contains("book:management")
-                || permissions.contains("content:menus"));
+                || permissions.contains("category:manage")
+                || permissions.contains("content:menus")
+                || permissions.contains("book:management"));
         request.setAttribute("showRolesMenu", admin
                 || permissions.contains("role:menus")
+                || permissions.contains("role:view")
+                || permissions.contains("role:manage")
                 || permissions.contains("system:role:management"));
         request.setAttribute("canManageUsers", admin
+                || permissions.contains("user:manage")
                 || permissions.contains("system:user:management"));
         request.setAttribute("canManageRoles", admin
+                || permissions.contains("role:manage")
                 || permissions.contains("system:role:management"));
         return true;
     }
