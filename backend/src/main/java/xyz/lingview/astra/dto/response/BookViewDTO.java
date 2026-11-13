@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 @Data
 public class BookViewDTO {
     private Integer id;
+    private Integer pinned;
     private String title;
     private String author;
     private Integer category_id;

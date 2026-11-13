@@ -77,6 +77,16 @@
         SELECT COUNT(*) FROM user_information WHERE status &lt;&gt; 0
     </select>
 
+    <select id="selectUserById" resultType="xyz.lingview.astra.domain.UserInformation">
+        SELECT id, uuid, username, avatar, phone, email, gender, birthday, create_time, status
+        FROM user_information
+        WHERE id = #{id}
+    </select>
+
+    <delete id="deleteUserById">
+        DELETE FROM user_information WHERE id = #{id}
+    </delete>
+
     <update id="updateUserByUUID" parameterType="xyz.lingview.astra.domain.UserInformation">
         UPDATE user_information
         <set>

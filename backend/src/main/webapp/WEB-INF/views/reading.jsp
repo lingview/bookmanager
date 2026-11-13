@@ -45,9 +45,12 @@
 <section class="zone">
     <div class="zone-head">
         <h2 class="zone-title">阅读数据</h2>
-        <c:if test="${empty overview or overview.year_goal <= 0}">
-            <a class="zone-link" href="${ctx}/books/stats">设置年度目标</a>
-        </c:if>
+        <div class="zone-actions">
+            <c:if test="${empty overview or overview.year_goal <= 0}">
+                <a class="zone-link" href="${ctx}/books/stats">设置年度目标</a>
+            </c:if>
+            <a class="zone-link" href="${ctx}/reading/annotations">笔记与书签（${noteCount} / ${bookmarkCount}）</a>
+        </div>
     </div>
     <c:choose>
         <c:when test="${not empty overview and (overview.total_seconds > 0 or overview.reading_book_count > 0 or overview.finished_this_year > 0)}">

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.lingview.astra.mapper.RoleAdminMapper">
+
+    <select id="selectRolesWithStats" resultType="xyz.lingview.astra.dto.response.RoleAdminRowDTO">
+        SELECT r.id, r.code, r.name, r.description, r.status,
+               (SELECT COUNT(*) FROM role_permission rp WHERE rp.role_id = r.id) AS permission_count,
+               (SELECT COUNT(*) FROM user_role ur JOIN user_information u ON u.id = ur.user_id
+                 WHERE ur.role_id = r.id AND u.status &lt;&gt; 0) AS user_count
+        FROM role r
+        ORDER BY r.id
+    </select>
+
+    <select id="selectRoleById" resultType="xyz.lingview.astra.domain.Role">
+        SELECT id, code, name, description, status FROM role WHERE id = #{id}
+    </select>
+
+    <select id="selectRoleByCode" resultType="xyz.lingview.astra.domain.Role">
+        SELECT id, code, name, description, status FROM role WHERE code = #{code}
+    </select>
+
+    <insert id="insertRole" parameterType="xyz.lingview.astra.domain.Role"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO role (code, name, description, status)
+        VALUES (#{code}, #{name}, #{description}, #{status})
+    </insert>
+
+    <update id="updateRole" parameterType="xyz.lingview.astra.domain.Role">
+        UPDATE role SET name = #{name}, description = #{description}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteRole">
+        DELETE FROM role WHERE id = #{id}
+    </delete>
+
+    <select id="selectAllPermissions" resultType="xyz.lingview.astra.domain.Permission">
+        SELECT id, code, name, module, create_time FROM permission ORDER BY module, id
+    </select>
+
+    <select id="selectPermissionIdsByRole" resultType="int">
+        SELECT permission_id FROM role_permission WHERE role_id = #{roleId}
+    </select>
+
+    <delete id="deleteRolePermissions">
+        DELETE FROM role_permission WHERE role_id = #{roleId}
+    </delete>
+
+    <insert id="insertRolePermission">
+        INSERT INTO role_permission (role_id, permission_id) VALUES (#{roleId}, #{permissionId})
+    </insert>
+
+    <select id="countUsersByRole" resultType="int">
+        SELECT COUNT(*) FROM user_role ur JOIN user_information u ON u.id = ur.user_id
+        WHERE ur.role_id = #{roleId} AND u.status &lt;&gt; 0
+    </select>
+
+    <select id="countRegisterDefaultRole" resultType="int">
+        SELECT COUNT(*) FROM site_config WHERE id = 1 AND register_user_permission = #{roleId}
+    </select>
+
+</mapper>

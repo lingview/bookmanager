@@ -22,6 +22,14 @@ public interface BookService {
 
     List<BookTag> listTags();
 
+    void batchSetCategory(List<Integer> bookIds, Integer categoryId);
+
+    int batchAddTag(List<Integer> bookIds, String tag);
+
+    void updateCover(Integer bookId, String coverUrl);
+
+    boolean togglePin(Integer bookId);
+
     List<BookViewDTO> listRecentReading(String userUuid, int limit);
 
     Integer randomBookId();
@@ -52,15 +60,19 @@ public interface BookService {
 
     List<BookBookmark> listBookmarks(String userUuid, Integer bookId);
 
+    List<BookBookmark> listAllBookmarks(String userUuid);
+
     Integer addBookmark(Integer bookId, Integer chapterId, BigDecimal scrollPercent, String note, String userUuid);
 
     void deleteBookmark(Integer id, String userUuid);
 
     List<ChapterSearchHitDTO> searchInBook(Integer bookId, String keyword);
 
-    List<FullTextHitDTO> searchAll(String keyword);
+    PageResult<FullTextHitDTO> searchAll(String keyword, Integer bookId, Integer categoryId, int page, int size);
 
     List<BookNote> listNotes(String userUuid, Integer bookId);
+
+    List<BookNote> listAllNotes(String userUuid);
 
     void addNote(Integer bookId, Integer chapterId, String quoteText, String noteText, String userUuid);
 

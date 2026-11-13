@@ -25,6 +25,20 @@
     </form>
 </div>
 
+<div class="card" style="margin-bottom: 20px;">
+    <div class="section-title">重新导入正文</div>
+    <form class="toolbar" style="margin: 0;"
+          action="${ctx}/books/${book.id}/reimport" method="post" enctype="multipart/form-data"
+          onsubmit="return confirm('确定用新文件替换全部章节吗？书籍信息、封面会保留，书签/笔记/进度按章节标题迁移。');">
+        <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
+        <input class="input" type="file" name="bookFile" accept=".txt,.epub" required>
+        <button type="submit" class="btn danger">替换全部章节</button>
+        <span class="form-hint" style="margin: 0;">
+            适合修正分章错误或换更完整的版本；标题相同的章节会自动迁移阅读进度、书签和笔记
+        </span>
+    </form>
+</div>
+
 <c:choose>
     <c:when test="${empty pageResult.data}">
         <p class="empty">还没有章节，可以手动新增或批量导入</p>

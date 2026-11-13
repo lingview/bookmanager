@@ -256,6 +256,8 @@ CREATE TABLE book (
     publish_year INTEGER,
     source_url TEXT,
     status INTEGER NOT NULL DEFAULT 1,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    pin_time DATETIME,
     create_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
     update_time DATETIME NOT NULL DEFAULT (datetime('now','localtime')),
     FOREIGN KEY (category_id) REFERENCES book_category (id) ON DELETE SET NULL ON UPDATE CASCADE

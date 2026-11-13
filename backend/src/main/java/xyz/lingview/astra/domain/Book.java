@@ -17,5 +17,6 @@ public class Book {
     private Integer publish_year;
     private String source_url;
     private Integer status;
+    private Integer pinned;
     private LocalDateTime update_time;
 }

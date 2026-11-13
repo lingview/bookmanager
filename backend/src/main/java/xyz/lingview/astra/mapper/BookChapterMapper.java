@@ -29,6 +29,14 @@ public interface BookChapterMapper {
 
     int softDeleteChapter(@Param("id") Integer id);
 
+    int softDeleteChaptersByBook(@Param("bookId") Integer bookId);
+
+    int remapBookmarkChapter(@Param("oldId") Integer oldId, @Param("newId") Integer newId);
+
+    int remapNoteChapter(@Param("oldId") Integer oldId, @Param("newId") Integer newId);
+
+    int remapProgressChapter(@Param("oldId") Integer oldId, @Param("newId") Integer newId);
+
     int updateChapterSort(@Param("id") Integer id, @Param("sort_order") Integer sort_order);
 
     int countActiveChapters(@Param("bookId") Integer bookId);

@@ -33,4 +33,8 @@ public interface SiteConfigMapper {
 
     // 获取是否允许用户注册
     Integer getEnableRegister();
+
+    // 更新注册开关与默认角色
+    int updateRegisterSettings(@org.apache.ibatis.annotations.Param("enableRegister") Integer enableRegister,
+                               @org.apache.ibatis.annotations.Param("registerRoleId") Integer registerRoleId);
 }

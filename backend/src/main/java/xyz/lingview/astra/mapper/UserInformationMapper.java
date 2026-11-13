@@ -22,5 +22,9 @@ public interface UserInformationMapper {
 
     java.util.List<UserInformation> selectUsersPage(@Param("offset") int offset, @Param("limit") int limit);
 
+    UserInformation selectUserById(@Param("id") Integer id);
+
+    int deleteUserById(@Param("id") Integer id);
+
     int countUsers();
 }

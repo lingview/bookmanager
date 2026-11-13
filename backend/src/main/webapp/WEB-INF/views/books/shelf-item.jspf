@@ -1,0 +1,42 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<div class="shelf-slot">
+    <c:if test="${canManage}">
+        <label class="batch-check">
+            <input type="checkbox" name="ids" value="${b.id}" form="batchForm">
+        </label>
+    </c:if>
+    <a class="book-cover" href="${ctx}/books/${b.id}">
+        <span class="thumb ${empty b.cover_url ? 'thumb-empty' : ''}">
+            <c:choose>
+                <c:when test="${not empty b.cover_url}">
+                    <img src="<c:out value='${b.cover_url}'/>" alt="">
+                </c:when>
+                <c:otherwise>无封面</c:otherwise>
+            </c:choose>
+        </span>
+    </a>
+    <span class="shelf-plank"></span>
+    <div class="book-label">
+        <a class="book-title" href="${ctx}/books/${b.id}"
+           title="<c:out value='${b.title}'/>"><c:out value="${b.title}"/></a>
+        <div class="book-meta">
+            <c:out value="${b.author}"/>
+            <c:if test="${not empty b.author and not empty b.category_name}"> · </c:if>
+            <c:out value="${b.category_name}"/>
+            · ${b.chapter_count} 章
+            <c:if test="${not empty b.my_rating}"> · ★${b.my_rating}</c:if>
+        </div>
+        <div class="book-actions">
+            <c:choose>
+                <c:when test="${not empty b.progress_chapter_id}">
+                    <a class="chip" href="${ctx}/books/${b.id}/read?chapterId=${b.progress_chapter_id}"
+                       title="继续阅读：<c:out value='${b.progress_chapter_title}'/>">继续阅读</a>
+                </c:when>
+                <c:when test="${b.chapter_count > 0}">
+                    <a class="chip" href="${ctx}/books/${b.id}/read">开始阅读</a>
+                </c:when>
+            </c:choose>
+        </div>
+    </div>
+</div>

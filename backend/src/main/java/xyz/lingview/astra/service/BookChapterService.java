@@ -30,4 +30,7 @@ public interface BookChapterService {
     List<ParsedChapterDTO> parseChapters(String filename, byte[] bytes);
 
     int importParsedChapters(Integer bookId, List<ParsedChapterDTO> chapters);
+
+    List<xyz.lingview.astra.dto.response.ChapterSummaryDTO> reimportChapters(Integer bookId,
+                                                                            List<ParsedChapterDTO> chapters);
 }

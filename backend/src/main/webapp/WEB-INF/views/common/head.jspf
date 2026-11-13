@@ -24,10 +24,10 @@
         <a class="nav-link ${navActive == 'books' ? 'active' : ''}" href="${ctx}/books">图书</a>
         <a class="nav-link ${navActive == 'reading' ? 'active' : ''}" href="${ctx}/reading">阅读</a>
         <a class="nav-link ${navActive == 'stats' ? 'active' : ''}" href="${ctx}/books/stats">统计</a>
-        <c:if test="${canManage}">
+        <c:if test="${showCategoriesMenu or canManage}">
             <a class="nav-link ${navActive == 'categories' ? 'active' : ''}" href="${ctx}/books/categories">分类</a>
         </c:if>
-        <c:if test="${isAdmin}">
+        <c:if test="${showUsersMenu or isAdmin}">
             <a class="nav-link ${navActive == 'users' ? 'active' : ''}" href="${ctx}/admin/users">用户</a>
         </c:if>
         <a class="nav-link" href="${ctx}/books/random">随便看看</a>

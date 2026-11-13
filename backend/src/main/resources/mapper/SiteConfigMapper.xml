@@ -104,6 +104,13 @@
         WHERE id = 1
     </update>
 
+    <update id="updateRegisterSettings">
+        UPDATE site_config
+        SET enable_register = #{enableRegister},
+            register_user_permission = #{registerRoleId}
+        WHERE id = 1
+    </update>
+
     <!-- 查询ICP备案号 -->
     <select id="getIcpRecordNumber" resultType="string">
         SELECT icp_record_number

@@ -70,11 +70,34 @@ public class BookController {
                        @RequestParam(required = false) String tag,
                        @RequestParam(defaultValue = "updated") String sort,
                        @RequestParam(defaultValue = "1") int page,
+                       @RequestParam(required = false) String group,
                        HttpSession session, Model model) {
         String userUuid = currentUserService.getCurrentUserUuid();
         PageResult<BookViewDTO> pageResult = bookService.listBooks(
                 keyword, category_id, shelf, tag, sort, page, 12, userUuid);
         model.addAttribute("pageResult", pageResult);
+        boolean groupMode = "series".equals(group);
+        model.addAttribute("groupMode", groupMode);
+        model.addAttribute("group", group);
+        if (groupMode) {
+            List<BookViewDTO> all = bookService.listBooks(
+                    keyword, category_id, shelf, tag, sort, 1, 1000, userUuid).getData();
+            java.util.Map<String, List<BookViewDTO>> groups = new java.util.LinkedHashMap<>();
+            for (BookViewDTO item : all) {
+                String series = "未分组";
+                if (item.getTag_names() != null) {
+                    for (String name : item.getTag_names().split("[,，]")) {
+                        String trimmed = name.trim();
+                        if (!trimmed.isEmpty()) {
+                            series = trimmed;
+                            break;
+                        }
+                    }
+                }
+                groups.computeIfAbsent(series, key -> new java.util.ArrayList<>()).add(item);
+            }
+            model.addAttribute("shelfGroups", groups);
+        }
         model.addAttribute("keyword", keyword);
         model.addAttribute("category_id", category_id);
         model.addAttribute("shelf", shelf);
@@ -346,9 +369,17 @@ public class BookController {
 
     // 全文搜索页
     @GetMapping("/fulltext")
-    public String fulltext(@RequestParam(required = false) String q, HttpSession session, Model model) {
+    public String fulltext(@RequestParam(required = false) String q,
+                           @RequestParam(required = false) Integer book_id,
+                           @RequestParam(required = false) Integer category_id,
+                           @RequestParam(defaultValue = "1") int page,
+                           HttpSession session, Model model) {
         model.addAttribute("q", q);
-        model.addAttribute("results", bookService.searchAll(q));
+        model.addAttribute("book_id", book_id);
+        model.addAttribute("category_id", category_id);
+        model.addAttribute("pageResult", bookService.searchAll(q, book_id, category_id, page, 20));
+        model.addAttribute("filterBooks", bookService.listBooks(null, null, null, null, "title", 1, 1000, null).getData());
+        model.addAttribute("categories", bookService.listCategories());
         model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "books/fulltext";

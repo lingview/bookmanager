@@ -15,6 +15,8 @@ public interface SiteConfigService {
     String getIcpRecordNumber();
     String getMpsRecordNumber();
     Integer getEnableRegister();
+    Integer getRegisterUserPermission();
+    boolean updateRegisterSettings(Integer enableRegister, Integer registerRoleId);
     Integer getEnableLlm();
     String getGlobalHeadCode();
     String getContentHeadCode();

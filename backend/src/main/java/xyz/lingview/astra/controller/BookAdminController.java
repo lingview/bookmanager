@@ -29,6 +29,8 @@ import xyz.lingview.astra.dto.request.BookFormDTO;
 import xyz.lingview.astra.dto.request.ChapterOrderDTO;
 import xyz.lingview.astra.dto.response.BookViewDTO;
 import xyz.lingview.astra.dto.response.CoverCandidateDTO;
+import xyz.lingview.astra.dto.response.ChapterSummaryDTO;
+import xyz.lingview.astra.dto.response.ParsedChapterDTO;
 import xyz.lingview.astra.dto.response.ImportPreviewDTO;
 import xyz.lingview.astra.dto.response.ParsedChapterDTO;
 import xyz.lingview.astra.dto.response.PreviewChapterContentDTO;
@@ -260,6 +262,19 @@ public class BookAdminController {
         }
     }
 
+    // 置顶/取消置顶
+    @PostMapping("/{id}/pin")
+    @RequiresPermission(MANAGE_PERMISSION)
+    public String togglePin(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+        try {
+            boolean pinned = bookService.togglePin(id);
+            redirectAttributes.addFlashAttribute("flashMessage", pinned ? "已置顶" : "已取消置顶");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("flashError", e.getMessage());
+        }
+        return "redirect:/books/" + id;
+    }
+
     // 删除图书
     @PostMapping("/{id}/delete")
     @RequiresPermission(MANAGE_PERMISSION)
@@ -395,6 +410,108 @@ public class BookAdminController {
         return "redirect:/books/" + id + "/chapters";
     }
 
+    // 重新导入正文（保留书籍信息与阅读数据，按章节标题迁移）
+    @PostMapping("/{id}/reimport")
+    @RequiresPermission(MANAGE_PERMISSION)
+    public String reimportChapters(@PathVariable Integer id,
+                                   @RequestParam("bookFile") MultipartFile file,
+                                   RedirectAttributes redirectAttributes) {
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new RuntimeException("请选择要导入的文件");
+            }
+            List<ParsedChapterDTO> parsed = bookChapterService.parseChapters(
+                    file.getOriginalFilename(), file.getBytes());
+            List<ChapterSummaryDTO> chapters = bookChapterService.reimportChapters(id, parsed);
+            redirectAttributes.addFlashAttribute("flashMessage",
+                    "正文已重新导入，共 " + chapters.size() + " 章，阅读进度/书签/笔记已按章节标题迁移");
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("flashError", e.getMessage());
+        } catch (Exception e) {
+            log.error("重新导入正文失败", e);
+            redirectAttributes.addFlashAttribute("flashError", "重新导入失败，请稍后再试");
+        }
+        return "redirect:/books/" + id + "/chapters";
+    }
+
+    // 书架批量操作
+    @PostMapping("/batch")
+    @RequiresPermission(MANAGE_PERMISSION)
+    public String batch(@RequestParam(required = false) List<Integer> ids,
+                        @RequestParam String action,
+                        @RequestParam(required = false) Integer category_id,
+                        @RequestParam(required = false) String tag,
+                        HttpServletRequest request,
+                        RedirectAttributes redirectAttributes) {
+        if (ids == null || ids.isEmpty()) {
+            redirectAttributes.addFlashAttribute("flashError", "请先选择图书");
+            return "redirect:/books";
+        }
+        try {
+            switch (action) {
+                case "category" -> {
+                    bookService.batchSetCategory(ids, category_id);
+                    redirectAttributes.addFlashAttribute("flashMessage", "已修改 " + ids.size() + " 本书的分类");
+                }
+                case "tag" -> {
+                    int added = bookService.batchAddTag(ids, tag);
+                    redirectAttributes.addFlashAttribute("flashMessage", "已为 " + added + " 本书添加标签");
+                }
+                case "delete" -> {
+                    int deleted = 0;
+                    for (Integer id : ids) {
+                        try {
+                            bookService.deleteBook(id);
+                            deleted++;
+                        } catch (RuntimeException ignored) {
+                        }
+                    }
+                    redirectAttributes.addFlashAttribute("flashMessage", "已删除 " + deleted + " 本书");
+                }
+                case "cover" -> {
+                    int done = 0;
+                    int failed = 0;
+                    int limit = Math.min(ids.size(), 30);
+                    for (int i = 0; i < limit; i++) {
+                        Integer id = ids.get(i);
+                        BookViewDTO book = bookService.getBook(id, null);
+                        if (book == null) {
+                            failed++;
+                            continue;
+                        }
+                        boolean applied = false;
+                        List<CoverCandidateDTO> candidates = coverSearchService.search(
+                                book.getTitle() + " 封面", 6);
+                        for (CoverCandidateDTO candidate : candidates) {
+                            ApiResponse<java.util.Map<String, String>> stored =
+                                    uploadService.storeImageFromUrl(request, candidate.getImage_url());
+                            if (stored.getCode() == 200 && stored.getData() != null) {
+                                String fileUrl = stored.getData().get("fileUrl");
+                                if (fileUrl != null && !fileUrl.isEmpty()) {
+                                    bookService.updateCover(id, fileUrl);
+                                    applied = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (applied) {
+                            done++;
+                        } else {
+                            failed++;
+                        }
+                    }
+                    String extra = ids.size() > limit ? "（单次最多处理 30 本）" : "";
+                    redirectAttributes.addFlashAttribute("flashMessage",
+                            "封面处理完成：成功 " + done + " 本，失败 " + failed + " 本" + extra);
+                }
+                default -> redirectAttributes.addFlashAttribute("flashError", "未知操作");
+            }
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("flashError", e.getMessage());
+        }
+        return "redirect:/books";
+    }
+
     // 搜索封面候选图
     @GetMapping("/cover-search")
     @RequiresPermission(MANAGE_PERMISSION)
@@ -414,7 +531,7 @@ public class BookAdminController {
 
     // 分类管理页
     @GetMapping("/categories")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:management", "content:menus"})
     public String categoryList(HttpSession session, Model model) {
         model.addAttribute("categories", bookService.listCategories());
         model.addAttribute("categoryForm", new BookCategoryFormDTO());
@@ -425,7 +542,7 @@ public class BookAdminController {
 
     // 新增分类
     @PostMapping("/categories")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:management", "content:menus"})
     public String createCategory(@Valid @ModelAttribute("categoryForm") BookCategoryFormDTO form,
                                  BindingResult binding, HttpSession session, Model model,
                                  RedirectAttributes redirectAttributes) {
@@ -447,7 +564,7 @@ public class BookAdminController {
 
     // 分类改名/调整排序
     @PostMapping("/categories/{categoryId}/edit")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:management", "content:menus"})
     public String renameCategory(@PathVariable Integer categoryId,
                                  @RequestParam String name,
                                  @RequestParam(required = false) Integer sort_order,
@@ -463,7 +580,7 @@ public class BookAdminController {
 
     // 删除分类
     @PostMapping("/categories/{categoryId}/delete")
-    @RequiresPermission(MANAGE_PERMISSION)
+    @RequiresPermission({"book:management", "content:menus"})
     public String deleteCategory(@PathVariable Integer categoryId, RedirectAttributes redirectAttributes) {
         try {
             bookService.deleteCategory(categoryId);

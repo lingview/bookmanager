@@ -144,6 +144,30 @@ public class SiteConfigServiceImpl implements SiteConfigService {
     }
 
     @Override
+    public Integer getRegisterUserPermission() {
+        SiteConfig config = getSiteConfig();
+        if (config != null) {
+            return config.getRegister_user_permission() == null
+                    ? null : Integer.valueOf(config.getRegister_user_permission().toString());
+        }
+        return siteConfigMapper.getRegisterUserPermission();
+    }
+
+    @Override
+    public boolean updateRegisterSettings(Integer enableRegister, Integer registerRoleId) {
+        try {
+            int rows = siteConfigMapper.updateRegisterSettings(
+                    enableRegister != null && enableRegister == 1 ? 1 : 0, registerRoleId);
+            cacheService.delete("astra:site_config");
+            getSiteConfig();
+            return rows >= 0;
+        } catch (Exception e) {
+            log.error("更新注册设置失败", e);
+            return false;
+        }
+    }
+
+    @Override
     public Integer getEnableLlm() {
         SiteConfig config = getSiteConfig();
         if (config != null) {

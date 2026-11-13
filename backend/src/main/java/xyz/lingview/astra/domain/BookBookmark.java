@@ -11,6 +11,7 @@ public class BookBookmark {
     private Integer book_id;
     private Integer chapter_id;
     private String chapter_title;
+    private String book_title;
     private BigDecimal scroll_percent;
     private String note;
     private String create_time;

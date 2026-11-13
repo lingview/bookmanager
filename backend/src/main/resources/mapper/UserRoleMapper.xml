@@ -49,4 +49,12 @@
         DELETE FROM user_role WHERE user_id = #{userId}
     </delete>
 
+    <select id="countUsersByRoleCode" resultType="int">
+        SELECT COUNT(*)
+        FROM user_role ur
+        INNER JOIN role r ON r.id = ur.role_id
+        INNER JOIN user_information u ON u.id = ur.user_id
+        WHERE r.code = #{code} AND u.status &lt;&gt; 0
+    </select>
+
 </mapper>

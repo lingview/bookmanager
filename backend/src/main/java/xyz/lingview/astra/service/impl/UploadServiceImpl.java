@@ -887,6 +887,12 @@ public class UploadServiceImpl implements UploadService {
                         + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
                 connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
                 connection.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+                String host = uri.getHost() == null ? "" : uri.getHost();
+                if (host.contains("baidu.com")) {
+                    connection.setRequestProperty("Referer", "https://image.baidu.com/");
+                } else {
+                    connection.setRequestProperty("Referer", uri.getScheme() + "://" + host + "/");
+                }
                 connection.setInstanceFollowRedirects(false);
 
                 int responseCode = connection.getResponseCode();

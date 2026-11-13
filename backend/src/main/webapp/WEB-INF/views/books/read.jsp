@@ -151,6 +151,10 @@
                     <span class="rail-icon">♪</span>
                     <span class="rail-text">朗读</span>
                 </button>
+                <button type="button" class="rail-btn" id="shortcutHelp" title="快捷键">
+                    <span class="rail-icon">?</span>
+                    <span class="rail-text">快捷键</span>
+                </button>
             </div>
             <c:if test="${not empty prevChapter or not empty nextChapter}">
                 <div class="rail-group">
@@ -197,6 +201,26 @@
             <div class="note-dialog-actions">
                 <button type="button" class="btn ghost" id="noteCancel">取消</button>
                 <button type="button" class="btn" id="noteSave">保存</button>
+            </div>
+        </div>
+    </div>
+    <div class="shortcut-mask" id="shortcutMask" hidden>
+        <div class="shortcut-dialog">
+            <div class="note-dialog-title">阅读快捷键</div>
+            <ul class="shortcut-list">
+                <li><kbd>←</kbd><kbd>→</kbd><span>上一章 / 下一章</span></li>
+                <li><kbd>Esc</kbd><span>返回详情</span></li>
+                <li><kbd>F</kbd><span>放大字号</span></li>
+                <li><kbd>G</kbd><span>缩小字号</span></li>
+                <li><kbd>T</kbd><span>切换纸张</span></li>
+                <li><kbd>L</kbd><span>切换行距</span></li>
+                <li><kbd>W</kbd><span>切换页宽</span></li>
+                <li><kbd>B</kbd><span>收藏 / 取消书签</span></li>
+                <li><kbd>S</kbd><span>自动滚动开关</span></li>
+                <li><kbd>R</kbd><span>朗读开关</span></li>
+            </ul>
+            <div class="note-dialog-actions">
+                <button type="button" class="btn" id="shortcutClose">知道了</button>
             </div>
         </div>
     </div>
@@ -265,6 +289,19 @@
             <button type="button" class="sheet-btn" id="mScrollBtn">开启</button>
             <span class="sheet-label">朗读</span>
             <button type="button" class="sheet-btn" id="mTtsBtn">开启</button>
+        </div>
+        <div class="sheet-row">
+            <span class="sheet-label">朗读语速</span>
+            <select class="select" id="ttsRate" style="width: 96px;">
+                <option value="0.8">0.8x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.2">1.2x</option>
+                <option value="1.5">1.5x</option>
+            </select>
+            <span class="sheet-label">声音</span>
+            <select class="select" id="ttsVoice" style="max-width: 160px;">
+                <option value="">默认</option>
+            </select>
         </div>
     </div>
 
@@ -787,7 +824,8 @@
                     items.forEach(function (item) {
                         var a = document.createElement('a');
                         a.className = 'toc-hit';
-                        a.href = ctx + '/books/' + bookId + '/read?chapterId=' + item.chapter_id;
+                        a.href = ctx + '/books/' + bookId + '/read?chapterId=' + item.chapter_id
+                            + '&q=' + encodeURIComponent(q);
                         var title = document.createElement('span');
                         title.className = 'toc-hit-title';
                         title.textContent = item.title;
@@ -927,6 +965,42 @@
 
             var ttsBtn = document.getElementById('toggleTts');
             var speaking = false;
+            var rateSel = document.getElementById('ttsRate');
+            var voiceSel = document.getElementById('ttsVoice');
+            var savedRate = localStorage.getItem('reader-tts-rate');
+            if (rateSel && savedRate) rateSel.value = savedRate;
+            var savedVoice = localStorage.getItem('reader-tts-voice') || '';
+
+            function fillVoices() {
+                if (!voiceSel || !('speechSynthesis' in window)) return;
+                var voices = window.speechSynthesis.getVoices().filter(function (voice) {
+                    return /zh|chinese/i.test(voice.lang + ' ' + voice.name);
+                });
+                voiceSel.innerHTML = '<option value="">默认</option>';
+                voices.forEach(function (voice) {
+                    var option = document.createElement('option');
+                    option.value = voice.name;
+                    option.textContent = voice.name + ' (' + voice.lang + ')';
+                    if (voice.name === savedVoice) option.selected = true;
+                    voiceSel.appendChild(option);
+                });
+            }
+
+            if ('speechSynthesis' in window) {
+                fillVoices();
+                window.speechSynthesis.onvoiceschanged = fillVoices;
+            }
+            if (rateSel) {
+                rateSel.addEventListener('change', function () {
+                    localStorage.setItem('reader-tts-rate', rateSel.value);
+                });
+            }
+            if (voiceSel) {
+                voiceSel.addEventListener('change', function () {
+                    localStorage.setItem('reader-tts-voice', voiceSel.value);
+                });
+            }
+
             ttsBtn.addEventListener('click', function () {
                 if (!('speechSynthesis' in window)) {
                     alert('当前浏览器不支持朗读');
@@ -944,6 +1018,16 @@
                 }
                 var utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'zh-CN';
+                if (rateSel) {
+                    var rate = parseFloat(rateSel.value);
+                    utterance.rate = isNaN(rate) ? 1 : rate;
+                }
+                if (voiceSel && voiceSel.value && 'speechSynthesis' in window) {
+                    var chosen = window.speechSynthesis.getVoices().filter(function (voice) {
+                        return voice.name === voiceSel.value;
+                    })[0];
+                    if (chosen) utterance.voice = chosen;
+                }
                 utterance.onend = function () {
                     speaking = false;
                     ttsBtn.classList.remove('on');
@@ -1058,6 +1142,13 @@
             var content = document.getElementById('chapterContent');
             if (!meta || !content) return;
             var quote = meta.getAttribute('data-focus-quote') || '';
+            if (!quote.trim()) {
+                try {
+                    quote = new URLSearchParams(location.search).get('q') || '';
+                } catch (e) {
+                    quote = '';
+                }
+            }
             if (!quote.trim()) return;
 
             function normalize(text) {
@@ -1102,6 +1193,41 @@
                 return;
             }
             mark.scrollIntoView({ block: 'center' });
+        })();
+    </script>
+    <script>
+        (function () {
+            var mask = document.getElementById('shortcutMask');
+            var btn = document.getElementById('shortcutHelp');
+            if (!mask) return;
+            function close() { mask.hidden = true; }
+            if (btn) btn.addEventListener('click', function () { mask.hidden = false; });
+            var closeBtn = document.getElementById('shortcutClose');
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            mask.addEventListener('click', function (e) {
+                if (e.target === mask) close();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.altKey || e.ctrlKey || e.metaKey) return;
+                var tag = (e.target.tagName || '').toLowerCase();
+                if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+                if (!mask.hidden) {
+                    if (e.key === 'Escape') close();
+                    return;
+                }
+                if (e.shiftKey) return;
+                var map = {
+                    f: 'fontPlus', g: 'fontMinus', t: 'themeToggle', l: 'lineToggle',
+                    w: 'widthToggle', b: 'addBookmark', s: 'toggleScroll', r: 'toggleTts'
+                };
+                var id = map[e.key.toLowerCase()];
+                if (!id) return;
+                var target = document.getElementById(id);
+                if (target) {
+                    e.preventDefault();
+                    target.click();
+                }
+            });
         })();
     </script>
 </c:if>

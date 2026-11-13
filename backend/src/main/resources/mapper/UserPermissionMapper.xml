@@ -12,7 +12,7 @@
                  INNER JOIN role r ON ur.role_id = r.id
                  INNER JOIN role_permission rp ON r.id = rp.role_id
                  INNER JOIN permission p ON rp.permission_id = p.id
-        WHERE u.username = #{username}
+        WHERE u.username = #{username} AND r.status = 1
     </select>
 
 </mapper>

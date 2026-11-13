@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="ctx" value="${pageContext.request.contextPath}"/>
 <c:set var="pageTitle" value="图书"/>
 <c:set var="navActive" value="books"/>
@@ -90,9 +91,36 @@
     </div>
 </div>
 
+<c:if test="${canManage}">
+    <form id="batchForm" class="batch-bar" action="${ctx}/books/batch" method="post">
+        <input type="hidden" name="csrfToken" value="<c:out value='${csrfToken}'/>">
+        <label class="choice"><input type="checkbox" id="batchAll"> 全选</label>
+        <span class="muted" id="batchCount">已选 0 本</span>
+        <select class="select" name="category_id">
+            <option value="">选择分类</option>
+            <c:forEach var="cat" items="${categories}">
+                <option value="${cat.id}"><c:out value="${cat.name}"/></option>
+            </c:forEach>
+        </select>
+        <button type="submit" class="btn small ghost" name="action" value="category">设为分类</button>
+        <input class="input" type="text" name="tag" placeholder="标签" maxlength="50">
+        <button type="submit" class="btn small ghost" name="action" value="tag">添加标签</button>
+        <button type="submit" class="btn small ghost" name="action" value="cover"
+                onclick="return confirm('为选中的书自动搜索并应用封面？单次最多处理 30 本。');">补封面</button>
+        <button type="submit" class="btn small danger" name="action" value="delete"
+                onclick="return confirm('确定删除选中的图书吗？关联章节和阅读数据会一并删除。');">删除</button>
+        <button type="button" class="btn small ghost" id="batchExit">取消</button>
+    </form>
+</c:if>
+
+<div class="shelf-menu" id="shelfMenu" hidden>
+    <button type="button" id="shelfMenuBatch">批量管理</button>
+</div>
+
 <c:if test="${hasFilter}">
     <div class="active-filters">
         <span>筛选：</span>
+        <c:if test="${groupMode}"><span class="filter-chip">按系列</span></c:if>
         <c:if test="${shelf == 'want'}"><span class="filter-chip">想读</span></c:if>
         <c:if test="${shelf == 'reading'}"><span class="filter-chip">在读</span></c:if>
         <c:if test="${shelf == 'finished'}"><span class="filter-chip">读过</span></c:if>
@@ -158,6 +186,10 @@
                 <option value="chapters" ${sort == 'chapters' ? 'selected' : ''}>章节数</option>
                 <option value="words" ${sort == 'words' ? 'selected' : ''}>字数</option>
             </select>
+            <select class="select" name="group">
+                <option value="">不分组</option>
+                <option value="series" ${group == 'series' ? 'selected' : ''}>按系列分组</option>
+            </select>
         </div>
         <div class="filter-actions">
             <a class="btn ghost" href="${ctx}/books">重置</a>
@@ -168,6 +200,24 @@
 </form>
 
 <c:choose>
+    <c:when test="${groupMode and empty shelfGroups}">
+        <p class="empty">还没有图书</p>
+    </c:when>
+    <c:when test="${groupMode}">
+        <c:forEach var="entry" items="${shelfGroups}">
+            <div class="shelf-group">
+                <div class="zone-head">
+                    <h2 class="zone-title"><c:out value="${entry.key}"/></h2>
+                    <span class="muted">${fn:length(entry.value)} 本</span>
+                </div>
+                <div class="shelf">
+                    <c:forEach var="b" items="${entry.value}">
+                        <%@ include file="shelf-item.jspf" %>
+                    </c:forEach>
+                </div>
+            </div>
+        </c:forEach>
+    </c:when>
     <c:when test="${empty pageResult.data}">
         <p class="empty">
             <c:choose>
@@ -179,47 +229,13 @@
     <c:otherwise>
         <div class="shelf">
             <c:forEach var="b" items="${pageResult.data}">
-                <div class="shelf-slot">
-                    <a class="book-cover" href="${ctx}/books/${b.id}">
-                        <span class="thumb ${empty b.cover_url ? 'thumb-empty' : ''}">
-                            <c:choose>
-                                <c:when test="${not empty b.cover_url}">
-                                    <img src="<c:out value='${b.cover_url}'/>" alt="">
-                                </c:when>
-                                <c:otherwise>无封面</c:otherwise>
-                            </c:choose>
-                        </span>
-                    </a>
-                    <span class="shelf-plank"></span>
-                    <div class="book-label">
-                        <a class="book-title" href="${ctx}/books/${b.id}"
-                           title="<c:out value='${b.title}'/>"><c:out value="${b.title}"/></a>
-                        <div class="book-meta">
-                            <c:out value="${b.author}"/>
-                            <c:if test="${not empty b.author and not empty b.category_name}"> · </c:if>
-                            <c:out value="${b.category_name}"/>
-                            · ${b.chapter_count} 章
-                            <c:if test="${not empty b.my_rating}"> · ★${b.my_rating}</c:if>
-                        </div>
-                        <div class="book-actions">
-                            <c:choose>
-                                <c:when test="${not empty b.progress_chapter_id}">
-                                    <a class="chip" href="${ctx}/books/${b.id}/read?chapterId=${b.progress_chapter_id}"
-                                       title="继续阅读：<c:out value='${b.progress_chapter_title}'/>">继续阅读</a>
-                                </c:when>
-                                <c:when test="${b.chapter_count > 0}">
-                                    <a class="chip" href="${ctx}/books/${b.id}/read">开始阅读</a>
-                                </c:when>
-                            </c:choose>
-                        </div>
-                    </div>
-                </div>
+                <%@ include file="shelf-item.jspf" %>
             </c:forEach>
         </div>
     </c:otherwise>
 </c:choose>
 
-<c:if test="${pageResult.total_pages > 1}">
+<c:if test="${not groupMode and pageResult.total_pages > 1}">
     <%@ include file="../common/pagination.jspf" %>
 </c:if>
     </main>
@@ -297,6 +313,149 @@
             if (form.contains(e.target) || searchToggle.contains(e.target) || filterToggle.contains(e.target)) return;
             closeAll();
         });
+    })();
+</script>
+
+<script>
+    (function () {
+        var batchForm = document.getElementById('batchForm');
+        if (!batchForm) return;
+        var all = document.getElementById('batchAll');
+        var count = document.getElementById('batchCount');
+        var boxes = Array.prototype.slice.call(document.querySelectorAll('input[name="ids"][form="batchForm"]'));
+        var exitBtn = document.getElementById('batchExit');
+        var menu = document.getElementById('shelfMenu');
+        var menuBatch = document.getElementById('shelfMenuBatch');
+        var menuTarget = null;
+        var pressTimer = null;
+        var longPressed = false;
+        var startX = 0;
+        var startY = 0;
+
+        function checkedBoxes() {
+            return boxes.filter(function (box) { return box.checked; });
+        }
+
+        function update() {
+            var picked = checkedBoxes().length;
+            if (count) count.textContent = '已选 ' + picked + ' 本';
+            if (all) all.checked = boxes.length > 0 && picked === boxes.length;
+        }
+
+        function closeMenu() {
+            if (menu) menu.hidden = true;
+        }
+
+        function openMenu(x, y, slot) {
+            if (!menu) return;
+            menuTarget = slot;
+            menu.hidden = false;
+            var width = 150;
+            var height = 52;
+            menu.style.left = Math.max(8, Math.min(x, window.innerWidth - width - 8)) + 'px';
+            menu.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
+        }
+
+        function enterBatch(slot) {
+            document.body.classList.add('batch-mode');
+            if (slot) {
+                var box = slot.querySelector('input[name="ids"]');
+                if (box) box.checked = true;
+            }
+            update();
+            closeMenu();
+        }
+
+        function exitBatch() {
+            document.body.classList.remove('batch-mode');
+            boxes.forEach(function (box) { box.checked = false; });
+            if (all) all.checked = false;
+            update();
+            closeMenu();
+        }
+
+        if (all) {
+            all.addEventListener('change', function () {
+                boxes.forEach(function (box) { box.checked = all.checked; });
+                update();
+            });
+        }
+        boxes.forEach(function (box) { box.addEventListener('change', update); });
+
+        if (exitBtn) exitBtn.addEventListener('click', exitBatch);
+        if (menuBatch) {
+            menuBatch.addEventListener('click', function () { enterBatch(menuTarget); });
+        }
+
+        document.querySelectorAll('.shelf-slot').forEach(function (slot) {
+            slot.addEventListener('contextmenu', function (e) {
+                if (document.body.classList.contains('batch-mode')) return;
+                e.preventDefault();
+                openMenu(e.clientX, e.clientY, slot);
+            });
+            slot.addEventListener('touchstart', function (e) {
+                if (e.touches.length !== 1 || document.body.classList.contains('batch-mode')) return;
+                var touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                clearTimeout(pressTimer);
+                pressTimer = setTimeout(function () {
+                    longPressed = true;
+                    openMenu(touch.clientX, touch.clientY, slot);
+                }, 520);
+            }, { passive: true });
+            slot.addEventListener('touchmove', function (e) {
+                if (!pressTimer) return;
+                var touch = e.touches[0];
+                if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+            }, { passive: true });
+            slot.addEventListener('touchend', function (e) {
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    pressTimer = null;
+                }
+                if (longPressed) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    longPressed = false;
+                }
+            }, { passive: false });
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!menu || menu.hidden) return;
+            if (!menu.contains(e.target)) closeMenu();
+        }, true);
+
+        document.addEventListener('click', function (e) {
+            if (!document.body.classList.contains('batch-mode')) return;
+            var slot = e.target.closest('.shelf-slot');
+            if (!slot) return;
+            if (e.target.closest('.batch-check')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var box = slot.querySelector('input[name="ids"]');
+            if (box) box.checked = !box.checked;
+            update();
+        }, true);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeMenu();
+                if (document.body.classList.contains('batch-mode')) exitBatch();
+            }
+        });
+
+        batchForm.addEventListener('submit', function (e) {
+            if (checkedBoxes().length === 0) {
+                e.preventDefault();
+                alert('请先勾选要操作的图书');
+            }
+        });
+        update();        update();
     })();
 </script>
 

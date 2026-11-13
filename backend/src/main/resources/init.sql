@@ -361,6 +361,8 @@ CREATE TABLE `book`  (
                          `publish_year` int NULL COMMENT '出版年',
                          `source_url` varchar(500) CHARACTER SET utf8mb4 NULL COMMENT '来源链接',
                          `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态：1正常，0已删除',
+                         `pinned` tinyint NOT NULL DEFAULT 0 COMMENT '是否置顶：1是，0否',
+                         `pin_time` datetime NULL COMMENT '置顶时间',
                          `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                          `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                          PRIMARY KEY (`id`) USING BTREE,

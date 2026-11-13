@@ -9,6 +9,7 @@ public class BookNote {
     private Integer book_id;
     private Integer chapter_id;
     private String chapter_title;
+    private String book_title;
     private String quote_text;
     private String note_text;
     private String create_time;

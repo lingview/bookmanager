@@ -14,5 +14,7 @@ public interface UserAdminService {
 
     void updateRoles(Integer userId, List<Integer> roleIds);
 
+    void deleteUser(Integer userId, String currentUsername);
+
     boolean isAdmin(String username);
 }

@@ -134,8 +134,8 @@
                     <div class="captcha-row">
                         <input class="form-control" type="text" id="captcha" required
                                autocomplete="off" maxlength="4">
-                        <img src="<c:out value='${captchaImage}'/>" alt="验证码" title="点击刷新"
-                             onclick="location.reload()">
+                        <img id="captchaImg" src="<c:out value='${captchaImage}'/>" alt="验证码"
+                             title="看不清？点击刷新">
                     </div>
                 </div>
 
@@ -156,6 +156,26 @@
         var errorBox = document.getElementById('errorBox');
         var successBox = document.getElementById('successBox');
         var captchaKey = document.getElementById('captchaKey').value;
+        var captchaImg = document.getElementById('captchaImg');
+        var captchaInput = document.getElementById('captcha');
+
+        function refreshCaptcha() {
+            fetch('${pageContext.request.contextPath}/api/captcha', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.code !== 200 || !res.data) return;
+                    captchaKey = res.data.key;
+                    document.getElementById('captchaKey').value = captchaKey;
+                    captchaImg.src = res.data.image;
+                    captchaInput.value = '';
+                    captchaInput.focus();
+                })
+                .catch(function () {});
+        }
+
+        if (captchaImg) {
+            captchaImg.addEventListener('click', refreshCaptcha);
+        }
 
         function showError(message) {
             successBox.hidden = true;
@@ -199,10 +219,12 @@
                 } else {
                     showError(res.message || '注册失败');
                     btn.disabled = false;
+                    refreshCaptcha();
                 }
             }).catch(function () {
                 showError('注册失败，请稍后再试');
                 btn.disabled = false;
+                refreshCaptcha();
             });
         });
     })();

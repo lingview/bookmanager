@@ -40,6 +40,14 @@ public interface BookMapper {
 
     int updateBook(Book book);
 
+    int updatePin(@Param("bookId") Integer bookId, @Param("pinned") Integer pinned,
+                 @Param("pinTime") java.time.LocalDateTime pinTime);
+
+    int updateBookCover(@Param("bookId") Integer bookId, @Param("coverUrl") String coverUrl);
+
+    int updateCategoryBatch(@Param("ids") java.util.List<Integer> ids,
+                            @Param("categoryId") Integer categoryId);
+
     int softDeleteBook(@Param("id") Integer id);
 
     List<BookCategory> selectCategories();
@@ -90,6 +98,8 @@ public interface BookMapper {
 
     List<BookBookmark> selectBookmarks(@Param("userUuid") String userUuid, @Param("bookId") Integer bookId);
 
+    List<BookBookmark> selectAllBookmarks(@Param("userUuid") String userUuid);
+
     int insertBookmark(@Param("userUuid") String userUuid, @Param("bookId") Integer bookId,
                        @Param("chapterId") Integer chapterId, @Param("scrollPercent") BigDecimal scrollPercent,
                        @Param("note") String note, @Param("now") LocalDateTime now);
@@ -113,10 +123,20 @@ public interface BookMapper {
 
     int insertBookTag(@Param("bookId") Integer bookId, @Param("tagId") Integer tagId);
 
-    List<xyz.lingview.astra.dto.response.FullTextRowDTO> searchAllChapters(@Param("pattern") String pattern);
+    List<xyz.lingview.astra.dto.response.FullTextRowDTO> searchAllChapters(@Param("pattern") String pattern,
+                                                                           @Param("bookId") Integer bookId,
+                                                                           @Param("categoryId") Integer categoryId,
+                                                                           @Param("offset") int offset,
+                                                                           @Param("limit") int limit);
+
+    int countAllChapters(@Param("pattern") String pattern,
+                         @Param("bookId") Integer bookId,
+                         @Param("categoryId") Integer categoryId);
 
     List<xyz.lingview.astra.domain.BookNote> selectNotes(@Param("userUuid") String userUuid,
                                                          @Param("bookId") Integer bookId);
+
+    List<xyz.lingview.astra.domain.BookNote> selectAllNotes(@Param("userUuid") String userUuid);
 
     int insertNote(@Param("userUuid") String userUuid, @Param("bookId") Integer bookId,
                    @Param("chapterId") Integer chapterId, @Param("quoteText") String quoteText,

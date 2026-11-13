@@ -37,10 +37,24 @@ public class ReadingPageController {
         if (userUuid != null) {
             model.addAttribute("recentBooks", bookService.listRecentReading(userUuid, 3));
             model.addAttribute("overview", bookStatsService.getPersonalOverview(userUuid));
+            model.addAttribute("noteCount", bookService.listAllNotes(userUuid).size());
+            model.addAttribute("bookmarkCount", bookService.listAllBookmarks(userUuid).size());
         }
         model.addAttribute("canManage", canManage());
         model.addAttribute("csrfToken", csrfTokenService.getToken(session));
         return "reading";
+    }
+
+    @GetMapping("/reading/annotations")
+    public String annotations(HttpSession session, Model model) {
+        String userUuid = currentUserService.getCurrentUserUuid();
+        if (userUuid != null) {
+            model.addAttribute("notes", bookService.listAllNotes(userUuid));
+            model.addAttribute("bookmarks", bookService.listAllBookmarks(userUuid));
+        }
+        model.addAttribute("canManage", canManage());
+        model.addAttribute("csrfToken", csrfTokenService.getToken(session));
+        return "reading-annotations";
     }
 
     private boolean canManage() {

@@ -256,6 +256,29 @@ public class BookChapterServiceImpl implements BookChapterService {
         return imported;
     }
 
+    @Override
+    @Transactional
+    public List<ChapterSummaryDTO> reimportChapters(Integer bookId, List<ParsedChapterDTO> chapters) {
+        List<ChapterSummaryDTO> oldChapters = chapterMapper.selectAllChapterSummaries(bookId);
+        chapterMapper.softDeleteChaptersByBook(bookId);
+        importParsedChapters(bookId, chapters);
+        List<ChapterSummaryDTO> newChapters = chapterMapper.selectAllChapterSummaries(bookId);
+        Map<String, Integer> newIdByTitle = new HashMap<>();
+        for (ChapterSummaryDTO chapter : newChapters) {
+            newIdByTitle.putIfAbsent(chapter.getTitle(), chapter.getId());
+        }
+        for (ChapterSummaryDTO old : oldChapters) {
+            Integer newId = newIdByTitle.get(old.getTitle());
+            if (newId == null || newId.equals(old.getId())) {
+                continue;
+            }
+            chapterMapper.remapBookmarkChapter(old.getId(), newId);
+            chapterMapper.remapNoteChapter(old.getId(), newId);
+            chapterMapper.remapProgressChapter(old.getId(), newId);
+        }
+        return newChapters;
+    }
+
     private void parseEpub(byte[] bytes, List<String> titles, List<String> bodies) {
         Map<String, byte[]> entries = readZipEntries(bytes);
         byte[] containerBytes = entries.get("META-INF/container.xml");

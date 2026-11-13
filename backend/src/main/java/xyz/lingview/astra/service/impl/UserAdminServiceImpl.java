@@ -81,6 +81,24 @@ public class UserAdminServiceImpl implements UserAdminService {
     }
 
     @Override
+    @Transactional
+    public void deleteUser(Integer userId, String currentUsername) {
+        UserInformation target = userId == null ? null : userInformationMapper.selectUserById(userId);
+        if (target == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        if (target.getUsername() != null && target.getUsername().equals(currentUsername)) {
+            throw new RuntimeException("不能删除当前登录账号");
+        }
+        boolean targetAdmin = userRoleMapper.selectRolesByUserId(userId).stream()
+                .anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getCode()));
+        if (targetAdmin && userRoleMapper.countUsersByRoleCode("ADMIN") <= 1) {
+            throw new RuntimeException("不能删除最后一个管理员");
+        }
+        userInformationMapper.deleteUserById(userId);
+    }
+
+    @Override
     public boolean isAdmin(String username) {
         if (username == null) {
             return false;

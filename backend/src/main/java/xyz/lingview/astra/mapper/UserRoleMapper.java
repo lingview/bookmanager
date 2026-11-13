@@ -25,4 +25,6 @@ public interface UserRoleMapper {
     java.util.List<xyz.lingview.astra.domain.Role> selectAllRoles();
 
     int deleteUserRolesByUserId(@Param("userId") Integer userId);
+
+    int countUsersByRoleCode(@Param("code") String code);
 }

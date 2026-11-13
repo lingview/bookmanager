@@ -61,6 +61,22 @@
         UPDATE book_chapter SET status = 0 WHERE id = #{id} AND status = 1
     </update>
 
+    <update id="softDeleteChaptersByBook">
+        UPDATE book_chapter SET status = 0 WHERE book_id = #{bookId} AND status = 1
+    </update>
+
+    <update id="remapBookmarkChapter">
+        UPDATE book_bookmark SET chapter_id = #{newId} WHERE chapter_id = #{oldId}
+    </update>
+
+    <update id="remapNoteChapter">
+        UPDATE book_note SET chapter_id = #{newId} WHERE chapter_id = #{oldId}
+    </update>
+
+    <update id="remapProgressChapter">
+        UPDATE book_reading_progress SET chapter_id = #{newId} WHERE chapter_id = #{oldId}
+    </update>
+
     <update id="updateChapterSort">
         UPDATE book_chapter SET sort_order = #{sort_order} WHERE id = #{id}
     </update>

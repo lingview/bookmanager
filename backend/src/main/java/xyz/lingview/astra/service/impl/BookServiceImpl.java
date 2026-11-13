@@ -295,6 +295,62 @@ public class BookServiceImpl implements BookService {
         return bookMapper.selectAllTags();
     }
 
+    @Override
+    @Transactional
+    public void batchSetCategory(List<Integer> bookIds, Integer categoryId) {
+        if (bookIds == null || bookIds.isEmpty()) {
+            throw new RuntimeException("请先选择图书");
+        }
+        if (categoryId == null) {
+            throw new RuntimeException("请选择分类");
+        }
+        bookMapper.updateCategoryBatch(bookIds, categoryId);
+    }
+
+    @Override
+    @Transactional
+    public int batchAddTag(List<Integer> bookIds, String tag) {
+        if (bookIds == null || bookIds.isEmpty()) {
+            throw new RuntimeException("请先选择图书");
+        }
+        String name = tag == null ? "" : tag.trim();
+        if (name.isEmpty()) {
+            throw new RuntimeException("请输入标签");
+        }
+        int added = 0;
+        for (Integer bookId : bookIds) {
+            BookViewDTO book = getBook(bookId, null);
+            if (book == null) {
+                continue;
+            }
+            String existing = book.getTag_names() == null ? "" : book.getTag_names().trim();
+            if (existing.contains(name)) {
+                continue;
+            }
+            syncTags(bookId, existing.isEmpty() ? name : existing + "," + name);
+            added++;
+        }
+        return added;
+    }
+
+    @Override
+    public void updateCover(Integer bookId, String coverUrl) {
+        if (bookId != null && coverUrl != null && !coverUrl.isEmpty()) {
+            bookMapper.updateBookCover(bookId, coverUrl);
+        }
+    }
+
+    @Override
+    public boolean togglePin(Integer bookId) {
+        BookViewDTO book = getBook(bookId, null);
+        if (book == null) {
+            throw new RuntimeException("图书不存在");
+        }
+        boolean pin = book.getPinned() == null || book.getPinned() == 0;
+        bookMapper.updatePin(bookId, pin ? 1 : 0, pin ? java.time.LocalDateTime.now() : null);
+        return pin;
+    }
+
     private void syncTags(Integer bookId, String tags) {
         bookMapper.deleteBookTags(bookId);
         if (tags == null) {
@@ -331,6 +387,11 @@ public class BookServiceImpl implements BookService {
     @Override
     public List<BookBookmark> listBookmarks(String userUuid, Integer bookId) {
         return bookMapper.selectBookmarks(userUuid, bookId);
+    }
+
+    @Override
+    public List<BookBookmark> listAllBookmarks(String userUuid) {
+        return bookMapper.selectAllBookmarks(userUuid);
     }
 
     @Override
@@ -381,12 +442,29 @@ public class BookServiceImpl implements BookService {
     }
 
     @Override
-    public List<FullTextHitDTO> searchAll(String keyword) {
+    public PageResult<FullTextHitDTO> searchAll(String keyword, Integer bookId, Integer categoryId,
+                                                int page, int size) {
+        PageResult<FullTextHitDTO> result = new PageResult<>();
+        int current = Math.max(1, page);
+        int pageSize = size <= 0 ? 20 : Math.min(size, 100);
+        result.setPage(current);
+        result.setSize(pageSize);
         String trimmed = keyword == null ? "" : keyword.trim();
         if (trimmed.isEmpty()) {
-            return List.of();
+            result.setData(List.of());
+            result.setTotal(0);
+            result.setTotal_pages(0);
+            return result;
         }
-        List<FullTextRowDTO> rows = bookMapper.searchAllChapters("%" + trimmed + "%");
+        String pattern = "%" + trimmed + "%";
+        int total = bookMapper.countAllChapters(pattern, bookId, categoryId);
+        int totalPages = total == 0 ? 0 : (total + pageSize - 1) / pageSize;
+        if (totalPages > 0 && current > totalPages) {
+            current = totalPages;
+            result.setPage(current);
+        }
+        List<FullTextRowDTO> rows = bookMapper.searchAllChapters(pattern, bookId, categoryId,
+                (current - 1) * pageSize, pageSize);
         List<FullTextHitDTO> hits = new java.util.ArrayList<>(rows.size());
         String lowerKeyword = trimmed.toLowerCase();
         for (FullTextRowDTO row : rows) {
@@ -398,7 +476,10 @@ public class BookServiceImpl implements BookService {
             hit.setSnippet(buildSnippet(row.getContent(), lowerKeyword, 40, 80, row.getChapter_title()));
             hits.add(hit);
         }
-        return hits;
+        result.setData(hits);
+        result.setTotal(total);
+        result.setTotal_pages(totalPages);
+        return result;
     }
 
     private String buildSnippet(String content, String lowerKeyword, int before, int after, String fallback) {
@@ -425,6 +506,14 @@ public class BookServiceImpl implements BookService {
             return List.of();
         }
         return bookMapper.selectNotes(userUuid, bookId);
+    }
+
+    @Override
+    public List<BookNote> listAllNotes(String userUuid) {
+        if (userUuid == null) {
+            return List.of();
+        }
+        return bookMapper.selectAllNotes(userUuid);
     }
 
     @Override

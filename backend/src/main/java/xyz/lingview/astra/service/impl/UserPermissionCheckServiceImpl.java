@@ -35,6 +35,11 @@ public class UserPermissionCheckServiceImpl implements UserPermissionCheckServic
         return false;
     }
 
+    @Override
+    public Set<String> getPermissions(String username) {
+        return getUserPermissions(username);
+    }
+
     private Set<String> getUserPermissions(String username) {
         return Set.copyOf(userPermissionMapper.findPermissionCodesByUserName(username));
     }
